@@ -50,8 +50,8 @@ A beautiful, feature-rich QR code generator built with Next.js 14, React, and Ty
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/justinnewbold/IDK_MYBFFJILL.git
-cd IDK_MYBFFJILL
+git clone https://github.com/justinnewbold/QRcodegenerator.git
+cd QRcodegenerator
 ```
 
 2. Install dependencies:

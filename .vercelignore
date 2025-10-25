@@ -1,0 +1,30 @@
+# Files to ignore during Vercel deployment
+
+# Node modules (installed during build)
+node_modules
+
+# Build output (generated during build)
+.next
+out
+
+# Development
+.env*.local
+
+# IDE
+.vscode
+.idea
+
+# Git
+.git
+.gitignore
+
+# Docs (optional, uncomment if you want to exclude from deployment)
+# DEPLOYMENT.md
+# README.md
+
+# Tests (if you add them later)
+__tests__
+*.test.ts
+*.test.tsx
+*.spec.ts
+*.spec.tsx
