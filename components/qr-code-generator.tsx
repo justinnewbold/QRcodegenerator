@@ -466,16 +466,60 @@ export default function QRCodeGenerator() {
                 />
               </div>
 
-              <div>
-                <Label htmlFor="logo-url">Logo URL (optional)</Label>
-                <Input
-                  id="logo-url"
-                  type="url"
-                  placeholder="https://example.com/logo.png"
-                  value={logoUrl}
-                  onChange={(e) => setLogoUrl(e.target.value)}
-                />
-                <p className="text-xs text-muted-foreground mt-1">
+              <div className="space-y-3">
+                <Label>Logo (optional)</Label>
+                <div className="space-y-2">
+                  <div>
+                    <Label htmlFor="logo-file" className="text-sm font-normal text-muted-foreground">
+                      Upload Image
+                    </Label>
+                    <Input
+                      id="logo-file"
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0]
+                        if (file) {
+                          const reader = new FileReader()
+                          reader.onload = (event) => {
+                            setLogoUrl(event.target?.result as string)
+                          }
+                          reader.readAsDataURL(file)
+                        }
+                      }}
+                      className="cursor-pointer"
+                    />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1 border-t" />
+                    <span className="text-xs text-muted-foreground">OR</span>
+                    <div className="flex-1 border-t" />
+                  </div>
+                  <div>
+                    <Label htmlFor="logo-url" className="text-sm font-normal text-muted-foreground">
+                      Image URL
+                    </Label>
+                    <Input
+                      id="logo-url"
+                      type="url"
+                      placeholder="https://example.com/logo.png"
+                      value={logoUrl}
+                      onChange={(e) => setLogoUrl(e.target.value)}
+                    />
+                  </div>
+                  {logoUrl && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setLogoUrl("")}
+                      className="w-full"
+                    >
+                      Clear Logo
+                    </Button>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground">
                   Add a logo in the center (works best with high error correction)
                 </p>
               </div>
