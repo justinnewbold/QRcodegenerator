@@ -429,15 +429,17 @@ export default function QRCodeGenerator() {
                         id="pet-photo"
                         type="file"
                         accept="image/*"
-                        onChange={async (e) => {
+                        onChange={(e) => {
                           const file = e.target.files?.[0]
                           if (file) {
-                            try {
-                              const compressed = await compressImage(file, 400, 400, 0.7)
-                              setPetPhoto(compressed)
-                            } catch (error) {
-                              console.error('Error compressing image:', error)
-                            }
+                            compressImage(file, 400, 400, 0.7)
+                              .then((compressed) => {
+                                setPetPhoto(compressed)
+                              })
+                              .catch((error) => {
+                                console.error('Error compressing image:', error)
+                                alert('Failed to compress image. Please try a different image.')
+                              })
                           }
                         }}
                         className="cursor-pointer"
@@ -766,15 +768,17 @@ export default function QRCodeGenerator() {
                       id="logo-file"
                       type="file"
                       accept="image/*"
-                      onChange={async (e) => {
+                      onChange={(e) => {
                         const file = e.target.files?.[0]
                         if (file) {
-                          try {
-                            const compressed = await compressImage(file, 200, 200, 0.8)
-                            setLogoUrl(compressed)
-                          } catch (error) {
-                            console.error('Error compressing image:', error)
-                          }
+                          compressImage(file, 200, 200, 0.8)
+                            .then((compressed) => {
+                              setLogoUrl(compressed)
+                            })
+                            .catch((error) => {
+                              console.error('Error compressing image:', error)
+                              alert('Failed to compress image. Please try a different image.')
+                            })
                         }
                       }}
                       className="cursor-pointer"
