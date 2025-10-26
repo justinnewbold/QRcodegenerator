@@ -41,7 +41,7 @@ export default function PetViewer() {
       // Get data from URL hash
       const hash = window.location.hash.slice(1)
       if (hash) {
-        const decoded = atob(hash)
+        const decoded = decodeURIComponent(atob(hash))
         const data = JSON.parse(decoded)
         setPetData(data)
       } else {
