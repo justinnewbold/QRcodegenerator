@@ -43,9 +43,6 @@ export default function PetViewer() {
       if (hash) {
         const decoded = decodeURIComponent(atob(hash))
         const data = JSON.parse(decoded)
-        console.log('Decoded pet data:', data)
-        console.log('Photo exists:', !!data.photo)
-        console.log('Photo length:', data.photo?.length)
         setPetData(data)
       } else {
         setError("No pet information found in QR code")
@@ -123,10 +120,8 @@ export default function PetViewer() {
                 alt={petData.name}
                 className="w-full h-full object-cover"
                 onError={(e) => {
-                  console.error('Image failed to load')
                   e.currentTarget.style.display = 'none'
                 }}
-                onLoad={() => console.log('Image loaded successfully')}
               />
             </div>
           )}
