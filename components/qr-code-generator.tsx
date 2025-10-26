@@ -18,6 +18,7 @@ import {
   type ErrorCorrectionLevel,
   type QRCodeOptions,
 } from "@/lib/qr-generator"
+import { compressImage } from "@/lib/image-utils"
 import { Download, QrCode, Wifi, Mail, Phone, MessageSquare, User, Link2, Heart, Plus, X } from "lucide-react"
 
 export default function QRCodeGenerator() {
@@ -428,18 +429,22 @@ export default function QRCodeGenerator() {
                         id="pet-photo"
                         type="file"
                         accept="image/*"
-                        onChange={(e) => {
+                        onChange={async (e) => {
                           const file = e.target.files?.[0]
                           if (file) {
-                            const reader = new FileReader()
-                            reader.onload = (event) => {
-                              setPetPhoto(event.target?.result as string)
+                            try {
+                              const compressed = await compressImage(file, 400, 400, 0.7)
+                              setPetPhoto(compressed)
+                            } catch (error) {
+                              console.error('Error compressing image:', error)
                             }
-                            reader.readAsDataURL(file)
                           }
                         }}
                         className="cursor-pointer"
                       />
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Image will be compressed for optimal QR code size
+                      </p>
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
@@ -761,14 +766,15 @@ export default function QRCodeGenerator() {
                       id="logo-file"
                       type="file"
                       accept="image/*"
-                      onChange={(e) => {
+                      onChange={async (e) => {
                         const file = e.target.files?.[0]
                         if (file) {
-                          const reader = new FileReader()
-                          reader.onload = (event) => {
-                            setLogoUrl(event.target?.result as string)
+                          try {
+                            const compressed = await compressImage(file, 200, 200, 0.8)
+                            setLogoUrl(compressed)
+                          } catch (error) {
+                            console.error('Error compressing image:', error)
                           }
-                          reader.readAsDataURL(file)
                         }
                       }}
                       className="cursor-pointer"
