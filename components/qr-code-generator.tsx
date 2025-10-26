@@ -111,22 +111,31 @@ export default function QRCodeGenerator() {
         break
       case "pet":
         if (petName) {
-          const petData = {
-            name: petName,
-            species: petSpecies,
-            breed: petBreed,
-            color: petColor,
-            age: petAge,
-            microchip: petMicrochip,
-            medical: petMedical,
-            photo: petPhoto,
-            contacts: petContacts.filter(c => c.name || c.phone),
-            customFields: petCustomFields.filter(f => f.label && f.value),
-            reward: petReward,
+          try {
+            const petData = {
+              name: petName,
+              species: petSpecies,
+              breed: petBreed,
+              color: petColor,
+              age: petAge,
+              microchip: petMicrochip,
+              medical: petMedical,
+              photo: petPhoto,
+              contacts: petContacts.filter(c => c.name || c.phone),
+              customFields: petCustomFields.filter(f => f.label && f.value),
+              reward: petReward,
+            }
+            console.log('Encoding pet data - photo exists:', !!petPhoto)
+            console.log('Photo length:', petPhoto?.length)
+            // Create URL to pet viewer page with encoded data
+            // Use encodeURIComponent to handle special characters safely
+            const jsonString = JSON.stringify(petData)
+            const encodedData = btoa(encodeURIComponent(jsonString))
+            newContent = `${typeof window !== 'undefined' ? window.location.origin : 'https://qrgen.newbold.cloud'}/pet#${encodedData}`
+          } catch (error) {
+            console.error("Error encoding pet data:", error)
+            newContent = ""
           }
-          // Create URL to pet viewer page with encoded data
-          const encodedData = btoa(JSON.stringify(petData))
-          newContent = `${typeof window !== 'undefined' ? window.location.origin : 'https://qrgen.newbold.cloud'}/pet#${encodedData}`
         }
         break
     }
@@ -423,30 +432,6 @@ export default function QRCodeGenerator() {
 
                 <TabsContent value="pet" className="space-y-4">
                   <div className="space-y-4">
-                    <div>
-                      <Label htmlFor="pet-photo">Pet Photo</Label>
-                      <Input
-                        id="pet-photo"
-                        type="file"
-                        accept="image/*"
-                        onChange={async (e) => {
-                          const file = e.target.files?.[0]
-                          if (file) {
-                            try {
-                              const compressed = await compressImage(file, 400, 400, 0.7)
-                              setPetPhoto(compressed)
-                            } catch (error) {
-                              console.error('Error compressing image:', error)
-                            }
-                          }
-                        }}
-                        className="cursor-pointer"
-                      />
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Image will be compressed for optimal QR code size
-                      </p>
-                    </div>
-
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <Label htmlFor="pet-name">Pet Name *</Label>
@@ -666,6 +651,32 @@ export default function QRCodeGenerator() {
                         </div>
                       ))}
                     </div>
+
+                    <div className="border-t pt-4">
+                      <Label htmlFor="pet-photo">Pet Photo (Optional)</Label>
+                      <Input
+                        id="pet-photo"
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0]
+                          if (file) {
+                            compressImage(file, 400, 400, 0.7)
+                              .then((compressed) => {
+                                setPetPhoto(compressed)
+                              })
+                              .catch((error) => {
+                                console.error('Error compressing image:', error)
+                                alert('Failed to compress image. Please try a different image.')
+                              })
+                          }
+                        }}
+                        className="cursor-pointer"
+                      />
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Upload last - Image will be compressed for optimal QR code size
+                      </p>
+                    </div>
                   </div>
                 </TabsContent>
               </Tabs>
@@ -755,8 +766,8 @@ export default function QRCodeGenerator() {
                 />
               </div>
 
-              <div className="space-y-3">
-                <Label>Logo (optional)</Label>
+              <div className="border-t pt-4 space-y-3">
+                <Label>Logo (Optional - Add Last)</Label>
                 <div className="space-y-2">
                   <div>
                     <Label htmlFor="logo-file" className="text-sm font-normal text-muted-foreground">
@@ -766,15 +777,17 @@ export default function QRCodeGenerator() {
                       id="logo-file"
                       type="file"
                       accept="image/*"
-                      onChange={async (e) => {
+                      onChange={(e) => {
                         const file = e.target.files?.[0]
                         if (file) {
-                          try {
-                            const compressed = await compressImage(file, 200, 200, 0.8)
-                            setLogoUrl(compressed)
-                          } catch (error) {
-                            console.error('Error compressing image:', error)
-                          }
+                          compressImage(file, 200, 200, 0.8)
+                            .then((compressed) => {
+                              setLogoUrl(compressed)
+                            })
+                            .catch((error) => {
+                              console.error('Error compressing image:', error)
+                              alert('Failed to compress image. Please try a different image.')
+                            })
                         }
                       }}
                       className="cursor-pointer"
@@ -810,7 +823,7 @@ export default function QRCodeGenerator() {
                   )}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Add a logo in the center (works best with high error correction)
+                  Upload last - Logo appears in center (works best with high error correction)
                 </p>
               </div>
             </CardContent>
