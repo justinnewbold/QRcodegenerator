@@ -18,7 +18,7 @@ import {
   type ErrorCorrectionLevel,
   type QRCodeOptions,
 } from "@/lib/qr-generator"
-import { Download, QrCode, Wifi, Mail, Phone, MessageSquare, User, Link2 } from "lucide-react"
+import { Download, QrCode, Wifi, Mail, Phone, MessageSquare, User, Link2, Heart, Plus, X } from "lucide-react"
 
 export default function QRCodeGenerator() {
   const [qrType, setQrType] = useState<string>("url")
@@ -52,6 +52,21 @@ export default function QRCodeGenerator() {
   const [smsMessage, setSmsMessage] = useState<string>("")
   const [phoneNumber, setPhoneNumber] = useState<string>("")
   const [plainText, setPlainText] = useState<string>("")
+
+  // Pet ID fields
+  const [petName, setPetName] = useState<string>("")
+  const [petSpecies, setPetSpecies] = useState<string>("")
+  const [petBreed, setPetBreed] = useState<string>("")
+  const [petColor, setPetColor] = useState<string>("")
+  const [petAge, setPetAge] = useState<string>("")
+  const [petMicrochip, setPetMicrochip] = useState<string>("")
+  const [petMedical, setPetMedical] = useState<string>("")
+  const [petPhoto, setPetPhoto] = useState<string>("")
+  const [petContacts, setPetContacts] = useState<Array<{name: string, phone: string, email: string, relation: string}>>([
+    {name: "", phone: "", email: "", relation: "Owner"}
+  ])
+  const [petCustomFields, setPetCustomFields] = useState<Array<{label: string, value: string}>>([])
+  const [petReward, setPetReward] = useState<string>("")
 
   useEffect(() => {
     let newContent = ""
@@ -93,12 +108,33 @@ export default function QRCodeGenerator() {
       case "text":
         newContent = plainText
         break
+      case "pet":
+        if (petName) {
+          const petData = {
+            name: petName,
+            species: petSpecies,
+            breed: petBreed,
+            color: petColor,
+            age: petAge,
+            microchip: petMicrochip,
+            medical: petMedical,
+            photo: petPhoto,
+            contacts: petContacts.filter(c => c.name || c.phone),
+            customFields: petCustomFields.filter(f => f.label && f.value),
+            reward: petReward,
+          }
+          // Create URL to pet viewer page with encoded data
+          const encodedData = btoa(JSON.stringify(petData))
+          newContent = `${typeof window !== 'undefined' ? window.location.origin : 'https://qrgen.newbold.cloud'}/pet#${encodedData}`
+        }
+        break
     }
 
     setContent(newContent)
   }, [qrType, url, wifiSsid, wifiPassword, wifiEncryption, vcardFirstName, vcardLastName,
       vcardPhone, vcardEmail, vcardOrg, vcardWebsite, emailAddress, emailSubject, emailBody,
-      smsPhone, smsMessage, phoneNumber, plainText])
+      smsPhone, smsMessage, phoneNumber, plainText, petName, petSpecies, petBreed, petColor,
+      petAge, petMicrochip, petMedical, petPhoto, petContacts, petCustomFields, petReward])
 
   const generateQR = useCallback(async () => {
     if (!content) return
@@ -162,7 +198,7 @@ export default function QRCodeGenerator() {
             </CardHeader>
             <CardContent>
               <Tabs value={qrType} onValueChange={setQrType}>
-                <TabsList className="grid grid-cols-4 lg:grid-cols-7 gap-2 h-auto">
+                <TabsList className="grid grid-cols-4 lg:grid-cols-8 gap-2 h-auto">
                   <TabsTrigger value="url" className="flex items-center gap-1">
                     <Link2 className="h-4 w-4" />
                     <span className="hidden sm:inline">URL</span>
@@ -170,6 +206,10 @@ export default function QRCodeGenerator() {
                   <TabsTrigger value="text" className="flex items-center gap-1">
                     <QrCode className="h-4 w-4" />
                     <span className="hidden sm:inline">Text</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="pet" className="flex items-center gap-1">
+                    <Heart className="h-4 w-4" />
+                    <span className="hidden sm:inline">Pet ID</span>
                   </TabsTrigger>
                   <TabsTrigger value="wifi" className="flex items-center gap-1">
                     <Wifi className="h-4 w-4" />
@@ -377,6 +417,250 @@ export default function QRCodeGenerator() {
                       value={phoneNumber}
                       onChange={(e) => setPhoneNumber(e.target.value)}
                     />
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="pet" className="space-y-4">
+                  <div className="space-y-4">
+                    <div>
+                      <Label htmlFor="pet-photo">Pet Photo</Label>
+                      <Input
+                        id="pet-photo"
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0]
+                          if (file) {
+                            const reader = new FileReader()
+                            reader.onload = (event) => {
+                              setPetPhoto(event.target?.result as string)
+                            }
+                            reader.readAsDataURL(file)
+                          }
+                        }}
+                        className="cursor-pointer"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="pet-name">Pet Name *</Label>
+                        <Input
+                          id="pet-name"
+                          placeholder="Buddy"
+                          value={petName}
+                          onChange={(e) => setPetName(e.target.value)}
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="pet-species">Species</Label>
+                        <Input
+                          id="pet-species"
+                          placeholder="Dog, Cat, etc."
+                          value={petSpecies}
+                          onChange={(e) => setPetSpecies(e.target.value)}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="pet-breed">Breed</Label>
+                        <Input
+                          id="pet-breed"
+                          placeholder="Golden Retriever"
+                          value={petBreed}
+                          onChange={(e) => setPetBreed(e.target.value)}
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="pet-color">Color/Markings</Label>
+                        <Input
+                          id="pet-color"
+                          placeholder="Golden, white chest"
+                          value={petColor}
+                          onChange={(e) => setPetColor(e.target.value)}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="pet-age">Age</Label>
+                        <Input
+                          id="pet-age"
+                          placeholder="3 years"
+                          value={petAge}
+                          onChange={(e) => setPetAge(e.target.value)}
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="pet-microchip">Microchip #</Label>
+                        <Input
+                          id="pet-microchip"
+                          placeholder="123456789"
+                          value={petMicrochip}
+                          onChange={(e) => setPetMicrochip(e.target.value)}
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <Label htmlFor="pet-medical">Medical Info / Allergies</Label>
+                      <Input
+                        id="pet-medical"
+                        placeholder="Allergic to peanuts, takes heart medication"
+                        value={petMedical}
+                        onChange={(e) => setPetMedical(e.target.value)}
+                      />
+                    </div>
+
+                    <div>
+                      <Label htmlFor="pet-reward">Reward Info (optional)</Label>
+                      <Input
+                        id="pet-reward"
+                        placeholder="$100 reward if found"
+                        value={petReward}
+                        onChange={(e) => setPetReward(e.target.value)}
+                      />
+                    </div>
+
+                    <div className="border-t pt-4">
+                      <div className="flex items-center justify-between mb-3">
+                        <Label>Emergency Contacts</Label>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setPetContacts([...petContacts, {name: "", phone: "", email: "", relation: ""}])}
+                        >
+                          <Plus className="h-4 w-4 mr-1" />
+                          Add Contact
+                        </Button>
+                      </div>
+
+                      {petContacts.map((contact, index) => (
+                        <div key={index} className="space-y-3 mb-4 p-3 border rounded-lg relative">
+                          {petContacts.length > 1 && (
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="ghost"
+                              className="absolute top-2 right-2"
+                              onClick={() => setPetContacts(petContacts.filter((_, i) => i !== index))}
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          )}
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <Label htmlFor={`contact-name-${index}`}>Name</Label>
+                              <Input
+                                id={`contact-name-${index}`}
+                                placeholder="John Doe"
+                                value={contact.name}
+                                onChange={(e) => {
+                                  const newContacts = [...petContacts]
+                                  newContacts[index].name = e.target.value
+                                  setPetContacts(newContacts)
+                                }}
+                              />
+                            </div>
+                            <div>
+                              <Label htmlFor={`contact-relation-${index}`}>Relation</Label>
+                              <Input
+                                id={`contact-relation-${index}`}
+                                placeholder="Owner, Vet, etc."
+                                value={contact.relation}
+                                onChange={(e) => {
+                                  const newContacts = [...petContacts]
+                                  newContacts[index].relation = e.target.value
+                                  setPetContacts(newContacts)
+                                }}
+                              />
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <Label htmlFor={`contact-phone-${index}`}>Phone</Label>
+                              <Input
+                                id={`contact-phone-${index}`}
+                                type="tel"
+                                placeholder="+1234567890"
+                                value={contact.phone}
+                                onChange={(e) => {
+                                  const newContacts = [...petContacts]
+                                  newContacts[index].phone = e.target.value
+                                  setPetContacts(newContacts)
+                                }}
+                              />
+                            </div>
+                            <div>
+                              <Label htmlFor={`contact-email-${index}`}>Email</Label>
+                              <Input
+                                id={`contact-email-${index}`}
+                                type="email"
+                                placeholder="john@example.com"
+                                value={contact.email}
+                                onChange={(e) => {
+                                  const newContacts = [...petContacts]
+                                  newContacts[index].email = e.target.value
+                                  setPetContacts(newContacts)
+                                }}
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="border-t pt-4">
+                      <div className="flex items-center justify-between mb-3">
+                        <Label>Custom Fields (optional)</Label>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setPetCustomFields([...petCustomFields, {label: "", value: ""}])}
+                        >
+                          <Plus className="h-4 w-4 mr-1" />
+                          Add Field
+                        </Button>
+                      </div>
+
+                      {petCustomFields.map((field, index) => (
+                        <div key={index} className="grid grid-cols-2 gap-3 mb-3">
+                          <Input
+                            placeholder="Label (e.g., Favorite Toy)"
+                            value={field.label}
+                            onChange={(e) => {
+                              const newFields = [...petCustomFields]
+                              newFields[index].label = e.target.value
+                              setPetCustomFields(newFields)
+                            }}
+                          />
+                          <div className="flex gap-2">
+                            <Input
+                              placeholder="Value"
+                              value={field.value}
+                              onChange={(e) => {
+                                const newFields = [...petCustomFields]
+                                newFields[index].value = e.target.value
+                                setPetCustomFields(newFields)
+                              }}
+                            />
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => setPetCustomFields(petCustomFields.filter((_, i) => i !== index))}
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </TabsContent>
               </Tabs>
