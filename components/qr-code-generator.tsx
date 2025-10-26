@@ -125,6 +125,8 @@ export default function QRCodeGenerator() {
               customFields: petCustomFields.filter(f => f.label && f.value),
               reward: petReward,
             }
+            console.log('Encoding pet data - photo exists:', !!petPhoto)
+            console.log('Photo length:', petPhoto?.length)
             // Create URL to pet viewer page with encoded data
             // Use encodeURIComponent to handle special characters safely
             const jsonString = JSON.stringify(petData)
