@@ -18,14 +18,15 @@ import {
   type ErrorCorrectionLevel,
   type QRCodeOptions,
 } from "@/lib/qr-generator"
-import { compressImage } from "@/lib/image-utils"
-import { Download, QrCode, Wifi, Mail, Phone, MessageSquare, User, Link2, Heart, Plus, X } from "lucide-react"
+import { compressImage, estimateQRDataSize, getQRCodeCapacity } from "@/lib/image-utils"
+import { Download, QrCode, Wifi, Mail, Phone, MessageSquare, User, Link2, Heart, Plus, X, AlertTriangle } from "lucide-react"
 
 export default function QRCodeGenerator() {
   const [qrType, setQrType] = useState<string>("url")
   const [content, setContent] = useState<string>("")
   const [qrDataUrl, setQrDataUrl] = useState<string>("")
   const [qrSvg, setQrSvg] = useState<string>("")
+  const [sizeWarning, setSizeWarning] = useState<string>("")
 
   // Customization options
   const [errorLevel, setErrorLevel] = useState<ErrorCorrectionLevel>("M")
@@ -68,6 +69,13 @@ export default function QRCodeGenerator() {
   ])
   const [petCustomFields, setPetCustomFields] = useState<Array<{label: string, value: string}>>([])
   const [petReward, setPetReward] = useState<string>("")
+
+  // Auto-switch to Low error correction for Pet IDs (they have more data)
+  useEffect(() => {
+    if (qrType === 'pet' && errorLevel !== 'L') {
+      setErrorLevel('L')
+    }
+  }, [qrType, errorLevel])
 
   useEffect(() => {
     let newContent = ""
@@ -147,7 +155,23 @@ export default function QRCodeGenerator() {
       petAge, petMicrochip, petMedical, petPhoto, petContacts, petCustomFields, petReward])
 
   const generateQR = useCallback(async () => {
-    if (!content) return
+    if (!content) {
+      setSizeWarning("")
+      return
+    }
+
+    // Check data size
+    const dataSize = estimateQRDataSize(content)
+    const maxCapacity = getQRCodeCapacity(errorLevel)
+
+    if (dataSize > maxCapacity) {
+      setSizeWarning(`QR code data (${dataSize} bytes) exceeds ${errorLevel} error correction limit (${maxCapacity} bytes). ${qrType === 'pet' && petPhoto ? 'Try removing the photo or use Low error correction.' : 'Reduce the amount of data.'}`)
+      setQrDataUrl("")
+      setQrSvg("")
+      return
+    }
+
+    setSizeWarning("")
 
     try {
       const options: QRCodeOptions = {
@@ -163,10 +187,13 @@ export default function QRCodeGenerator() {
       const result = await generateQRCode(options)
       setQrDataUrl(result.dataUrl)
       setQrSvg(result.svg)
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error generating QR code:", error)
+      if (error?.message?.includes('too big')) {
+        setSizeWarning("QR code data is too large. Try removing the photo or reducing other information.")
+      }
     }
-  }, [content, errorLevel, size, fgColor, bgColor, margin, logoUrl])
+  }, [content, errorLevel, size, fgColor, bgColor, margin, logoUrl, qrType, petPhoto])
 
   useEffect(() => {
     if (content) {
@@ -661,9 +688,14 @@ export default function QRCodeGenerator() {
                         onChange={(e) => {
                           const file = e.target.files?.[0]
                           if (file) {
-                            compressImage(file, 400, 400, 0.7)
+                            // Aggressive compression for QR codes: 150x150 at 30% quality
+                            compressImage(file, 150, 150, 0.3)
                               .then((compressed) => {
                                 setPetPhoto(compressed)
+                                // Suggest using Low error correction for photos
+                                if (errorLevel === 'H' || errorLevel === 'Q') {
+                                  alert('Tip: For QR codes with photos, use "Low" error correction to fit more data.')
+                                }
                               })
                               .catch((error) => {
                                 console.error('Error compressing image:', error)
@@ -674,8 +706,19 @@ export default function QRCodeGenerator() {
                         className="cursor-pointer"
                       />
                       <p className="text-xs text-muted-foreground mt-1">
-                        Upload last - Image will be compressed for optimal QR code size
+                        Upload last - Photos are highly compressed (150x150) to fit in QR code. Use Low error correction for best results.
                       </p>
+                      {petPhoto && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setPetPhoto("")}
+                          className="w-full mt-2"
+                        >
+                          Remove Photo
+                        </Button>
+                      )}
                     </div>
                   </div>
                 </TabsContent>
@@ -838,6 +881,17 @@ export default function QRCodeGenerator() {
               <CardDescription>Your generated QR code</CardDescription>
             </CardHeader>
             <CardContent>
+              {sizeWarning && (
+                <div className="mb-4 p-4 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+                  <div className="flex items-start gap-2">
+                    <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
+                    <div>
+                      <p className="font-semibold text-amber-900 dark:text-amber-100">QR Code Too Large</p>
+                      <p className="text-sm text-amber-800 dark:text-amber-200 mt-1">{sizeWarning}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
               <div className="flex flex-col items-center justify-center space-y-4">
                 {qrDataUrl ? (
                   <>

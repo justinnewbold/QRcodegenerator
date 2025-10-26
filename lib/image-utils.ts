@@ -54,3 +54,20 @@ export function compressImage(
     reader.readAsDataURL(file)
   })
 }
+
+// Estimate QR code data size in bytes
+export function estimateQRDataSize(data: string): number {
+  // Account for encoding overhead
+  return new Blob([data]).size
+}
+
+// Get maximum QR code capacity based on error correction level
+export function getQRCodeCapacity(errorLevel: string): number {
+  const capacities: { [key: string]: number } = {
+    'L': 2953,  // Low - 7% error correction
+    'M': 2331,  // Medium - 15% error correction
+    'Q': 1663,  // Quartile - 25% error correction
+    'H': 1273,  // High - 30% error correction
+  }
+  return capacities[errorLevel] || capacities['M']
+}
