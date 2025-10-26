@@ -15,11 +15,17 @@ import {
   generateEmailString,
   generateSMSString,
   generatePhoneString,
+  generateCalendarString,
+  generateCryptoString,
+  generateAppStoreString,
+  generatePDF,
   type ErrorCorrectionLevel,
   type QRCodeOptions,
+  type QRStyle,
 } from "@/lib/qr-generator"
 import { compressImage, estimateQRDataSize, getQRCodeCapacity } from "@/lib/image-utils"
-import { Download, QrCode, Wifi, Mail, Phone, MessageSquare, User, Link2, Heart, Plus, X, AlertTriangle } from "lucide-react"
+import { saveToHistory, getHistory, clearHistory, deleteHistoryItem, type QRHistoryItem } from "@/lib/qr-history"
+import { Download, QrCode, Wifi, Mail, Phone, MessageSquare, User, Link2, Heart, Plus, X, AlertTriangle, Info, Calendar, Coins, Smartphone, History, FileText, Printer, Trash2 } from "lucide-react"
 
 export default function QRCodeGenerator() {
   const [qrType, setQrType] = useState<string>("url")
@@ -35,6 +41,11 @@ export default function QRCodeGenerator() {
   const [bgColor, setBgColor] = useState<string>("#ffffff")
   const [margin, setMargin] = useState<number>(4)
   const [logoUrl, setLogoUrl] = useState<string>("")
+  const [qrStyle, setQrStyle] = useState<QRStyle>("squares")
+
+  // History
+  const [history, setHistory] = useState<QRHistoryItem[]>([])
+  const [showHistory, setShowHistory] = useState<boolean>(false)
 
   // Form fields for different QR types
   const [url, setUrl] = useState<string>("")
@@ -63,12 +74,32 @@ export default function QRCodeGenerator() {
   const [petAge, setPetAge] = useState<string>("")
   const [petMicrochip, setPetMicrochip] = useState<string>("")
   const [petMedical, setPetMedical] = useState<string>("")
-  const [petPhoto, setPetPhoto] = useState<string>("")
   const [petContacts, setPetContacts] = useState<Array<{name: string, phone: string, email: string, relation: string}>>([
     {name: "", phone: "", email: "", relation: "Owner"}
   ])
   const [petCustomFields, setPetCustomFields] = useState<Array<{label: string, value: string}>>([])
   const [petReward, setPetReward] = useState<string>("")
+
+  // Calendar Event fields
+  const [calendarTitle, setCalendarTitle] = useState<string>("")
+  const [calendarLocation, setCalendarLocation] = useState<string>("")
+  const [calendarStart, setCalendarStart] = useState<string>("")
+  const [calendarEnd, setCalendarEnd] = useState<string>("")
+  const [calendarDescription, setCalendarDescription] = useState<string>("")
+
+  // Cryptocurrency fields
+  const [cryptoAddress, setCryptoAddress] = useState<string>("")
+  const [cryptoAmount, setCryptoAmount] = useState<string>("")
+  const [cryptoLabel, setCryptoLabel] = useState<string>("")
+
+  // App Store fields
+  const [appPlatform, setAppPlatform] = useState<'ios' | 'android'>('ios')
+  const [appId, setAppId] = useState<string>("")
+
+  // Load history on mount
+  useEffect(() => {
+    setHistory(getHistory())
+  }, [])
 
   // Auto-switch to Low error correction for Pet IDs (they have more data)
   useEffect(() => {
@@ -128,13 +159,10 @@ export default function QRCodeGenerator() {
               age: petAge,
               microchip: petMicrochip,
               medical: petMedical,
-              photo: petPhoto,
               contacts: petContacts.filter(c => c.name || c.phone),
               customFields: petCustomFields.filter(f => f.label && f.value),
               reward: petReward,
             }
-            console.log('Encoding pet data - photo exists:', !!petPhoto)
-            console.log('Photo length:', petPhoto?.length)
             // Create URL to pet viewer page with encoded data
             // Use encodeURIComponent to handle special characters safely
             const jsonString = JSON.stringify(petData)
@@ -146,13 +174,36 @@ export default function QRCodeGenerator() {
           }
         }
         break
+      case "calendar":
+        if (calendarTitle && calendarStart && calendarEnd) {
+          newContent = generateCalendarString({
+            title: calendarTitle,
+            location: calendarLocation,
+            startDate: calendarStart,
+            endDate: calendarEnd,
+            description: calendarDescription,
+          })
+        }
+        break
+      case "crypto":
+        if (cryptoAddress) {
+          newContent = generateCryptoString(cryptoAddress, cryptoAmount, cryptoLabel)
+        }
+        break
+      case "app":
+        if (appId) {
+          newContent = generateAppStoreString(appPlatform, appId)
+        }
+        break
     }
 
     setContent(newContent)
   }, [qrType, url, wifiSsid, wifiPassword, wifiEncryption, vcardFirstName, vcardLastName,
       vcardPhone, vcardEmail, vcardOrg, vcardWebsite, emailAddress, emailSubject, emailBody,
       smsPhone, smsMessage, phoneNumber, plainText, petName, petSpecies, petBreed, petColor,
-      petAge, petMicrochip, petMedical, petPhoto, petContacts, petCustomFields, petReward])
+      petAge, petMicrochip, petMedical, petContacts, petCustomFields, petReward,
+      calendarTitle, calendarLocation, calendarStart, calendarEnd, calendarDescription,
+      cryptoAddress, cryptoAmount, cryptoLabel, appPlatform, appId])
 
   const generateQR = useCallback(async () => {
     if (!content) {
@@ -165,7 +216,7 @@ export default function QRCodeGenerator() {
     const maxCapacity = getQRCodeCapacity(errorLevel)
 
     if (dataSize > maxCapacity) {
-      setSizeWarning(`QR code data (${dataSize} bytes) exceeds ${errorLevel} error correction limit (${maxCapacity} bytes). ${qrType === 'pet' && petPhoto ? 'Try removing the photo or use Low error correction.' : 'Reduce the amount of data.'}`)
+      setSizeWarning(`QR code data (${dataSize} bytes) exceeds ${errorLevel} error correction limit (${maxCapacity} bytes). Try reducing the amount of information or use Low error correction.`)
       setQrDataUrl("")
       setQrSvg("")
       return
@@ -182,18 +233,37 @@ export default function QRCodeGenerator() {
         backgroundColor: bgColor,
         margin,
         logoUrl: logoUrl || undefined,
+        style: qrStyle,
       }
 
       const result = await generateQRCode(options)
       setQrDataUrl(result.dataUrl)
       setQrSvg(result.svg)
+
+      // Save to history
+      saveToHistory({
+        type: qrType,
+        content,
+        preview: result.dataUrl,
+        options: {
+          errorLevel,
+          size,
+          fgColor,
+          bgColor,
+          margin,
+          style: qrStyle,
+        },
+      })
+
+      // Refresh history
+      setHistory(getHistory())
     } catch (error: any) {
       console.error("Error generating QR code:", error)
       if (error?.message?.includes('too big')) {
-        setSizeWarning("QR code data is too large. Try removing the photo or reducing other information.")
+        setSizeWarning("QR code data is too large. Try reducing the amount of information.")
       }
     }
-  }, [content, errorLevel, size, fgColor, bgColor, margin, logoUrl, qrType, petPhoto])
+  }, [content, errorLevel, size, fgColor, bgColor, margin, logoUrl, qrStyle, qrType])
 
   useEffect(() => {
     if (content) {
@@ -201,7 +271,7 @@ export default function QRCodeGenerator() {
     }
   }, [content, generateQR])
 
-  const downloadQR = (format: "png" | "svg") => {
+  const downloadQR = (format: "png" | "svg" | "pdf") => {
     if (format === "png" && qrDataUrl) {
       const link = document.createElement("a")
       link.href = qrDataUrl
@@ -215,6 +285,159 @@ export default function QRCodeGenerator() {
       link.download = `qrcode-${Date.now()}.svg`
       link.click()
       URL.revokeObjectURL(url)
+    } else if (format === "pdf" && qrDataUrl) {
+      generatePDF(qrDataUrl, `qrcode-${Date.now()}.pdf`)
+    }
+  }
+
+  const loadFromHistory = (item: QRHistoryItem) => {
+    // Set options
+    setErrorLevel(item.options.errorLevel as ErrorCorrectionLevel)
+    setSize(item.options.size)
+    setFgColor(item.options.fgColor)
+    setBgColor(item.options.bgColor)
+    setMargin(item.options.margin)
+    if (item.options.style) {
+      setQrStyle(item.options.style as QRStyle)
+    }
+
+    // Set type and content
+    setQrType(item.type)
+    // Note: This will set the raw content, user will see the QR but not the individual fields
+    // For a full implementation, we'd need to store and restore all field values
+    setShowHistory(false)
+  }
+
+  const handleDeleteHistoryItem = (id: string) => {
+    deleteHistoryItem(id)
+    setHistory(getHistory())
+  }
+
+  const handleClearHistory = () => {
+    if (confirm('Are you sure you want to clear all history?')) {
+      clearHistory()
+      setHistory([])
+    }
+  }
+
+  const openPrintView = () => {
+    if (qrDataUrl) {
+      const printWindow = window.open('', '_blank')
+      if (printWindow) {
+        printWindow.document.write(`
+          <html>
+            <head>
+              <title>Print QR Code</title>
+              <style>
+                body {
+                  margin: 0;
+                  display: flex;
+                  justify-content: center;
+                  align-items: center;
+                  min-height: 100vh;
+                  background: white;
+                }
+                img {
+                  max-width: 90%;
+                  height: auto;
+                }
+                @media print {
+                  body {
+                    margin: 0;
+                  }
+                  img {
+                    max-width: 100%;
+                    page-break-after: avoid;
+                  }
+                }
+              </style>
+            </head>
+            <body>
+              <img src="${qrDataUrl}" alt="QR Code" />
+            </body>
+          </html>
+        `)
+        printWindow.document.close()
+        printWindow.focus()
+        setTimeout(() => printWindow.print(), 250)
+      }
+    }
+  }
+
+  const loadExample = () => {
+    switch (qrType) {
+      case 'url':
+        setUrl('https://qrgen.newbold.cloud')
+        break
+      case 'text':
+        setPlainText('Hello, World! This is a sample QR code.')
+        break
+      case 'wifi':
+        setWifiSsid('MyHomeWiFi')
+        setWifiPassword('SecurePassword123')
+        setWifiEncryption('WPA')
+        break
+      case 'vcard':
+        setVcardFirstName('John')
+        setVcardLastName('Doe')
+        setVcardPhone('+1234567890')
+        setVcardEmail('john.doe@example.com')
+        setVcardOrg('Acme Corporation')
+        setVcardWebsite('https://example.com')
+        break
+      case 'email':
+        setEmailAddress('contact@example.com')
+        setEmailSubject('Hello from QR Code')
+        setEmailBody('This email was triggered by scanning a QR code!')
+        break
+      case 'sms':
+        setSmsPhone('+1234567890')
+        setSmsMessage('Hello from QR Code!')
+        break
+      case 'phone':
+        setPhoneNumber('+1234567890')
+        break
+      case 'pet':
+        setPetName('Buddy')
+        setPetSpecies('Dog')
+        setPetBreed('Golden Retriever')
+        setPetColor('Golden')
+        setPetAge('3 years')
+        setPetMicrochip('123456789')
+        setPetMedical('No known allergies')
+        setPetContacts([{
+          name: 'Jane Doe',
+          phone: '+1234567890',
+          email: 'jane@example.com',
+          relation: 'Owner'
+        }])
+        setPetReward('$100 reward if found')
+        break
+      case 'calendar':
+        const now = new Date()
+        const tomorrow = new Date(now)
+        tomorrow.setDate(tomorrow.getDate() + 1)
+        tomorrow.setHours(14, 0, 0, 0)
+        const end = new Date(tomorrow)
+        end.setHours(15, 0, 0, 0)
+        setCalendarTitle('Team Meeting')
+        setCalendarLocation('Conference Room A')
+        setCalendarStart(tomorrow.toISOString().slice(0, 16))
+        setCalendarEnd(end.toISOString().slice(0, 16))
+        setCalendarDescription('Discuss Q4 goals and project updates')
+        break
+      case 'crypto':
+        setCryptoAddress('bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh')
+        setCryptoAmount('0.001')
+        setCryptoLabel('Donation')
+        break
+      case 'app':
+        if (appPlatform === 'ios') {
+          setAppId('310633997')
+        } else {
+          setAppId('com.whatsapp')
+        }
+        break
     }
   }
 
@@ -229,13 +452,24 @@ export default function QRCodeGenerator() {
         {/* Input Section */}
         <div className="space-y-6">
           <Card>
-            <CardHeader>
-              <CardTitle>QR Code Type</CardTitle>
-              <CardDescription>Choose what type of QR code to generate</CardDescription>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle>QR Code Type</CardTitle>
+                <CardDescription>Choose what type of QR code to generate</CardDescription>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={loadExample}
+                className="gap-2"
+              >
+                <FileText className="h-4 w-4" />
+                Example
+              </Button>
             </CardHeader>
             <CardContent>
               <Tabs value={qrType} onValueChange={setQrType}>
-                <TabsList className="grid grid-cols-4 lg:grid-cols-8 gap-2 h-auto">
+                <TabsList className="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-11 gap-2 h-auto">
                   <TabsTrigger value="url" className="flex items-center gap-1">
                     <Link2 className="h-4 w-4" />
                     <span className="hidden sm:inline">URL</span>
@@ -267,6 +501,18 @@ export default function QRCodeGenerator() {
                   <TabsTrigger value="phone" className="flex items-center gap-1">
                     <Phone className="h-4 w-4" />
                     <span className="hidden sm:inline">Phone</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="calendar" className="flex items-center gap-1">
+                    <Calendar className="h-4 w-4" />
+                    <span className="hidden sm:inline">Event</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="crypto" className="flex items-center gap-1">
+                    <Coins className="h-4 w-4" />
+                    <span className="hidden sm:inline">Crypto</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="app" className="flex items-center gap-1">
+                    <Smartphone className="h-4 w-4" />
+                    <span className="hidden sm:inline">App</span>
                   </TabsTrigger>
                 </TabsList>
 
@@ -678,49 +924,120 @@ export default function QRCodeGenerator() {
                         </div>
                       ))}
                     </div>
+                  </div>
+                </TabsContent>
 
-                    <div className="border-t pt-4">
-                      <Label htmlFor="pet-photo">Pet Photo (Optional)</Label>
+                <TabsContent value="calendar" className="space-y-4">
+                  <div>
+                    <Label htmlFor="calendar-title">Event Title *</Label>
+                    <Input
+                      id="calendar-title"
+                      placeholder="Team Meeting"
+                      value={calendarTitle}
+                      onChange={(e) => setCalendarTitle(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="calendar-location">Location</Label>
+                    <Input
+                      id="calendar-location"
+                      placeholder="Conference Room A"
+                      value={calendarLocation}
+                      onChange={(e) => setCalendarLocation(e.target.value)}
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="calendar-start">Start Date/Time *</Label>
                       <Input
-                        id="pet-photo"
-                        type="file"
-                        accept="image/*"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0]
-                          if (file) {
-                            // Aggressive compression for QR codes: 150x150 at 30% quality
-                            compressImage(file, 150, 150, 0.3)
-                              .then((compressed) => {
-                                setPetPhoto(compressed)
-                                // Suggest using Low error correction for photos
-                                if (errorLevel === 'H' || errorLevel === 'Q') {
-                                  alert('Tip: For QR codes with photos, use "Low" error correction to fit more data.')
-                                }
-                              })
-                              .catch((error) => {
-                                console.error('Error compressing image:', error)
-                                alert('Failed to compress image. Please try a different image.')
-                              })
-                          }
-                        }}
-                        className="cursor-pointer"
+                        id="calendar-start"
+                        type="datetime-local"
+                        value={calendarStart}
+                        onChange={(e) => setCalendarStart(e.target.value)}
                       />
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Upload last - Photos are highly compressed (150x150) to fit in QR code. Use Low error correction for best results.
-                      </p>
-                      {petPhoto && (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setPetPhoto("")}
-                          className="w-full mt-2"
-                        >
-                          Remove Photo
-                        </Button>
-                      )}
+                    </div>
+                    <div>
+                      <Label htmlFor="calendar-end">End Date/Time *</Label>
+                      <Input
+                        id="calendar-end"
+                        type="datetime-local"
+                        value={calendarEnd}
+                        onChange={(e) => setCalendarEnd(e.target.value)}
+                      />
                     </div>
                   </div>
+                  <div>
+                    <Label htmlFor="calendar-description">Description</Label>
+                    <Input
+                      id="calendar-description"
+                      placeholder="Discuss Q4 goals"
+                      value={calendarDescription}
+                      onChange={(e) => setCalendarDescription(e.target.value)}
+                    />
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="crypto" className="space-y-4">
+                  <div>
+                    <Label htmlFor="crypto-address">Wallet Address *</Label>
+                    <Input
+                      id="crypto-address"
+                      placeholder="bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh (Bitcoin) or 0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb (Ethereum)"
+                      value={cryptoAddress}
+                      onChange={(e) => setCryptoAddress(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="crypto-amount">Amount (optional)</Label>
+                    <Input
+                      id="crypto-amount"
+                      type="number"
+                      step="0.00000001"
+                      placeholder="0.001"
+                      value={cryptoAmount}
+                      onChange={(e) => setCryptoAmount(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="crypto-label">Label (optional)</Label>
+                    <Input
+                      id="crypto-label"
+                      placeholder="Donation to..."
+                      value={cryptoLabel}
+                      onChange={(e) => setCryptoLabel(e.target.value)}
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Supports Bitcoin and Ethereum addresses. Address format is auto-detected.
+                  </p>
+                </TabsContent>
+
+                <TabsContent value="app" className="space-y-4">
+                  <div>
+                    <Label htmlFor="app-platform">Platform</Label>
+                    <Select
+                      id="app-platform"
+                      value={appPlatform}
+                      onChange={(e) => setAppPlatform(e.target.value as 'ios' | 'android')}
+                    >
+                      <option value="ios">iOS (App Store)</option>
+                      <option value="android">Android (Google Play)</option>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label htmlFor="app-id">App ID *</Label>
+                    <Input
+                      id="app-id"
+                      placeholder={appPlatform === 'ios' ? '123456789 (numeric ID)' : 'com.example.app (package name)'}
+                      value={appId}
+                      onChange={(e) => setAppId(e.target.value)}
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {appPlatform === 'ios'
+                      ? 'Find the App ID in your app\'s App Store URL: apps.apple.com/app/id[YOUR-ID]'
+                      : 'Use your app\'s package name (e.g., com.example.myapp)'}
+                  </p>
                 </TabsContent>
               </Tabs>
             </CardContent>
@@ -733,16 +1050,45 @@ export default function QRCodeGenerator() {
             </CardHeader>
             <CardContent className="space-y-6">
               <div>
-                <Label htmlFor="error-level">Error Correction Level</Label>
+                <div className="flex items-center gap-2 mb-2">
+                  <Label htmlFor="error-level">Error Correction Level</Label>
+                  <div className="group relative">
+                    <Info className="h-4 w-4 text-muted-foreground cursor-help" />
+                    <div className="absolute left-0 bottom-full mb-2 hidden group-hover:block w-80 p-3 bg-popover text-popover-foreground border rounded-lg shadow-lg z-10">
+                      <p className="text-sm font-semibold mb-2">Error Correction Levels</p>
+                      <p className="text-xs mb-2">QR codes can still work even if partially damaged or dirty:</p>
+                      <ul className="text-xs space-y-1">
+                        <li><strong>Low (7%):</strong> Maximum data capacity, best for clean surfaces</li>
+                        <li><strong>Medium (15%):</strong> Good balance - recommended default</li>
+                        <li><strong>Quartile (25%):</strong> Better damage resistance, good for outdoor use</li>
+                        <li><strong>High (30%):</strong> Best damage resistance, ideal when adding logos</li>
+                      </ul>
+                      <p className="text-xs mt-2 text-muted-foreground">Higher correction = less data capacity but more damage resistance</p>
+                    </div>
+                  </div>
+                </div>
                 <Select
                   id="error-level"
                   value={errorLevel}
                   onChange={(e) => setErrorLevel(e.target.value as ErrorCorrectionLevel)}
                 >
-                  <option value="L">Low (7%)</option>
-                  <option value="M">Medium (15%)</option>
-                  <option value="Q">Quartile (25%)</option>
-                  <option value="H">High (30%)</option>
+                  <option value="L">Low (7%) - Maximum Data</option>
+                  <option value="M">Medium (15%) - Recommended</option>
+                  <option value="Q">Quartile (25%) - Outdoor Use</option>
+                  <option value="H">High (30%) - Best with Logos</option>
+                </Select>
+              </div>
+
+              <div>
+                <Label htmlFor="qr-style">QR Code Style</Label>
+                <Select
+                  id="qr-style"
+                  value={qrStyle}
+                  onChange={(e) => setQrStyle(e.target.value as QRStyle)}
+                >
+                  <option value="squares">Squares (Classic)</option>
+                  <option value="dots">Dots (Rounded)</option>
+                  <option value="rounded">Rounded Squares</option>
                 </Select>
               </div>
 
@@ -823,7 +1169,8 @@ export default function QRCodeGenerator() {
                       onChange={(e) => {
                         const file = e.target.files?.[0]
                         if (file) {
-                          compressImage(file, 200, 200, 0.8)
+                          // Higher quality for logo since it's just overlaid, not encoded in QR data
+                          compressImage(file, 300, 300, 0.9)
                             .then((compressed) => {
                               setLogoUrl(compressed)
                             })
@@ -898,14 +1245,22 @@ export default function QRCodeGenerator() {
                     <div className="p-8 bg-white rounded-lg shadow-lg">
                       <img src={qrDataUrl} alt="QR Code" className="max-w-full" />
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex flex-wrap gap-2 justify-center">
                       <Button onClick={() => downloadQR("png")} className="gap-2">
                         <Download className="h-4 w-4" />
-                        Download PNG
+                        PNG
                       </Button>
                       <Button onClick={() => downloadQR("svg")} variant="outline" className="gap-2">
                         <Download className="h-4 w-4" />
-                        Download SVG
+                        SVG
+                      </Button>
+                      <Button onClick={() => downloadQR("pdf")} variant="outline" className="gap-2">
+                        <FileText className="h-4 w-4" />
+                        PDF
+                      </Button>
+                      <Button onClick={openPrintView} variant="outline" className="gap-2">
+                        <Printer className="h-4 w-4" />
+                        Print
                       </Button>
                     </div>
                   </>
@@ -916,6 +1271,68 @@ export default function QRCodeGenerator() {
                   </div>
                 )}
               </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle>History</CardTitle>
+                <CardDescription>Your recently generated QR codes</CardDescription>
+              </div>
+              {history.length > 0 && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleClearHistory}
+                  className="gap-2"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  Clear
+                </Button>
+              )}
+            </CardHeader>
+            <CardContent>
+              {history.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <History className="h-12 w-12 mx-auto mb-2 opacity-20" />
+                  <p className="text-sm">No history yet</p>
+                  <p className="text-xs">Generated QR codes will appear here</p>
+                </div>
+              ) : (
+                <div className="space-y-3 max-h-[400px] overflow-y-auto">
+                  {history.map((item) => (
+                    <div
+                      key={item.id}
+                      className="flex items-center gap-3 p-3 border rounded-lg hover:bg-accent cursor-pointer group"
+                      onClick={() => loadFromHistory(item)}
+                    >
+                      <img
+                        src={item.preview}
+                        alt="QR Preview"
+                        className="w-16 h-16 rounded border"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-sm capitalize">{item.type}</p>
+                        <p className="text-xs text-muted-foreground truncate">
+                          {new Date(item.timestamp).toLocaleString()}
+                        </p>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleDeleteHistoryItem(item.id)
+                        }}
+                        className="opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -932,11 +1349,15 @@ export default function QRCodeGenerator() {
                 <strong>Features:</strong>
               </p>
               <ul className="list-disc list-inside space-y-1 ml-2">
-                <li>Multiple QR code types (URL, WiFi, vCard, Email, SMS, Phone, Text)</li>
-                <li>Customizable colors and size</li>
-                <li>Adjustable error correction levels</li>
+                <li>11 QR code types (URL, Text, Pet ID, WiFi, vCard, Email, SMS, Phone, Calendar Events, Cryptocurrency, App Store)</li>
+                <li>3 visual styles (Squares, Dots, Rounded)</li>
+                <li>Customizable colors, sizes, and margins</li>
+                <li>Adjustable error correction levels with tooltips</li>
                 <li>Logo embedding support</li>
-                <li>Download as PNG or SVG</li>
+                <li>Download as PNG, SVG, or PDF</li>
+                <li>Print-optimized view</li>
+                <li>Local history (last 10 QR codes)</li>
+                <li>100% client-side - no server uploads</li>
                 <li>No tracking, no ads, completely free</li>
               </ul>
             </CardContent>
