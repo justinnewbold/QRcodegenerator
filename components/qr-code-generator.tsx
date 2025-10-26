@@ -19,7 +19,7 @@ import {
   type QRCodeOptions,
 } from "@/lib/qr-generator"
 import { compressImage, estimateQRDataSize, getQRCodeCapacity } from "@/lib/image-utils"
-import { Download, QrCode, Wifi, Mail, Phone, MessageSquare, User, Link2, Heart, Plus, X, AlertTriangle } from "lucide-react"
+import { Download, QrCode, Wifi, Mail, Phone, MessageSquare, User, Link2, Heart, Plus, X, AlertTriangle, Info } from "lucide-react"
 
 export default function QRCodeGenerator() {
   const [qrType, setQrType] = useState<string>("url")
@@ -687,16 +687,32 @@ export default function QRCodeGenerator() {
             </CardHeader>
             <CardContent className="space-y-6">
               <div>
-                <Label htmlFor="error-level">Error Correction Level</Label>
+                <div className="flex items-center gap-2 mb-2">
+                  <Label htmlFor="error-level">Error Correction Level</Label>
+                  <div className="group relative">
+                    <Info className="h-4 w-4 text-muted-foreground cursor-help" />
+                    <div className="absolute left-0 bottom-full mb-2 hidden group-hover:block w-80 p-3 bg-popover text-popover-foreground border rounded-lg shadow-lg z-10">
+                      <p className="text-sm font-semibold mb-2">Error Correction Levels</p>
+                      <p className="text-xs mb-2">QR codes can still work even if partially damaged or dirty:</p>
+                      <ul className="text-xs space-y-1">
+                        <li><strong>Low (7%):</strong> Maximum data capacity, best for clean surfaces</li>
+                        <li><strong>Medium (15%):</strong> Good balance - recommended default</li>
+                        <li><strong>Quartile (25%):</strong> Better damage resistance, good for outdoor use</li>
+                        <li><strong>High (30%):</strong> Best damage resistance, ideal when adding logos</li>
+                      </ul>
+                      <p className="text-xs mt-2 text-muted-foreground">Higher correction = less data capacity but more damage resistance</p>
+                    </div>
+                  </div>
+                </div>
                 <Select
                   id="error-level"
                   value={errorLevel}
                   onChange={(e) => setErrorLevel(e.target.value as ErrorCorrectionLevel)}
                 >
-                  <option value="L">Low (7%)</option>
-                  <option value="M">Medium (15%)</option>
-                  <option value="Q">Quartile (25%)</option>
-                  <option value="H">High (30%)</option>
+                  <option value="L">Low (7%) - Maximum Data</option>
+                  <option value="M">Medium (15%) - Recommended</option>
+                  <option value="Q">Quartile (25%) - Outdoor Use</option>
+                  <option value="H">High (30%) - Best with Logos</option>
                 </Select>
               </div>
 
