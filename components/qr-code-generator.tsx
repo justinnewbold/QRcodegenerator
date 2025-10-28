@@ -18,14 +18,19 @@ import {
   generateCalendarString,
   generateCryptoString,
   generateAppStoreString,
+  generateSocialMediaString,
+  generateLocationString,
   generatePDF,
   type ErrorCorrectionLevel,
   type QRCodeOptions,
   type QRStyle,
+  type FinderPattern,
+  type FrameStyle,
+  type GradientConfig,
 } from "@/lib/qr-generator"
 import { compressImage, estimateQRDataSize, getQRCodeCapacity } from "@/lib/image-utils"
 import { saveToHistory, getHistory, clearHistory, deleteHistoryItem, type QRHistoryItem } from "@/lib/qr-history"
-import { Download, QrCode, Wifi, Mail, Phone, MessageSquare, User, Link2, Heart, Plus, X, AlertTriangle, Info, Calendar, Coins, Smartphone, History, FileText, Printer, Trash2 } from "lucide-react"
+import { Download, QrCode, Wifi, Mail, Phone, MessageSquare, User, Link2, Heart, Plus, X, AlertTriangle, Info, Calendar, Coins, Smartphone, History, FileText, Printer, Trash2, MapPin, Twitter, Instagram, Linkedin, Facebook, Music } from "lucide-react"
 
 export default function QRCodeGenerator() {
   const [qrType, setQrType] = useState<string>("url")
@@ -95,6 +100,26 @@ export default function QRCodeGenerator() {
   // App Store fields
   const [appPlatform, setAppPlatform] = useState<'ios' | 'android'>('ios')
   const [appId, setAppId] = useState<string>("")
+
+  // Social Media fields
+  const [socialPlatform, setSocialPlatform] = useState<string>('twitter')
+  const [socialUsername, setSocialUsername] = useState<string>("")
+
+  // Location fields
+  const [locationLat, setLocationLat] = useState<string>("")
+  const [locationLng, setLocationLng] = useState<string>("")
+  const [locationLabel, setLocationLabel] = useState<string>("")
+
+  // Advanced styling
+  const [finderPattern, setFinderPattern] = useState<FinderPattern>("square")
+  const [frameStyle, setFrameStyle] = useState<FrameStyle>("none")
+  const [frameText, setFrameText] = useState<string>("")
+  const [transparentBg, setTransparentBg] = useState<boolean>(false)
+  const [gradientEnabled, setGradientEnabled] = useState<boolean>(false)
+  const [gradientType, setGradientType] = useState<'linear' | 'radial'>('linear')
+  const [gradientColorStart, setGradientColorStart] = useState<string>("#667eea")
+  const [gradientColorEnd, setGradientColorEnd] = useState<string>("#764ba2")
+  const [gradientRotation, setGradientRotation] = useState<number>(45)
 
   // Load history on mount
   useEffect(() => {
@@ -195,6 +220,16 @@ export default function QRCodeGenerator() {
           newContent = generateAppStoreString(appPlatform, appId)
         }
         break
+      case "social":
+        if (socialUsername) {
+          newContent = generateSocialMediaString(socialPlatform, socialUsername)
+        }
+        break
+      case "location":
+        if (locationLat && locationLng) {
+          newContent = generateLocationString(locationLat, locationLng, locationLabel)
+        }
+        break
     }
 
     setContent(newContent)
@@ -203,7 +238,8 @@ export default function QRCodeGenerator() {
       smsPhone, smsMessage, phoneNumber, plainText, petName, petSpecies, petBreed, petColor,
       petAge, petMicrochip, petMedical, petContacts, petCustomFields, petReward,
       calendarTitle, calendarLocation, calendarStart, calendarEnd, calendarDescription,
-      cryptoAddress, cryptoAmount, cryptoLabel, appPlatform, appId])
+      cryptoAddress, cryptoAmount, cryptoLabel, appPlatform, appId,
+      socialPlatform, socialUsername, locationLat, locationLng, locationLabel])
 
   const generateQR = useCallback(async () => {
     if (!content) {
@@ -225,6 +261,14 @@ export default function QRCodeGenerator() {
     setSizeWarning("")
 
     try {
+      const gradientConfig: GradientConfig = {
+        enabled: gradientEnabled,
+        type: gradientType,
+        colorStart: gradientColorStart,
+        colorEnd: gradientColorEnd,
+        rotation: gradientRotation,
+      };
+
       const options: QRCodeOptions = {
         content,
         errorCorrectionLevel: errorLevel,
@@ -234,6 +278,11 @@ export default function QRCodeGenerator() {
         margin,
         logoUrl: logoUrl || undefined,
         style: qrStyle,
+        gradient: gradientConfig,
+        finderPattern,
+        frameStyle,
+        frameText: frameText || undefined,
+        transparentBackground: transparentBg,
       }
 
       const result = await generateQRCode(options)
@@ -263,7 +312,9 @@ export default function QRCodeGenerator() {
         setSizeWarning("QR code data is too large. Try reducing the amount of information.")
       }
     }
-  }, [content, errorLevel, size, fgColor, bgColor, margin, logoUrl, qrStyle, qrType])
+  }, [content, errorLevel, size, fgColor, bgColor, margin, logoUrl, qrStyle, qrType,
+      gradientEnabled, gradientType, gradientColorStart, gradientColorEnd, gradientRotation,
+      finderPattern, frameStyle, frameText, transparentBg])
 
   useEffect(() => {
     if (content) {
@@ -438,6 +489,31 @@ export default function QRCodeGenerator() {
           setAppId('com.whatsapp')
         }
         break
+      case 'social':
+        setSocialUsername('username')
+        break
+      case 'location':
+        setLocationLat('37.7749')
+        setLocationLng('-122.4194')
+        setLocationLabel('San Francisco, CA')
+        break
+    }
+  }
+
+  const applySizePreset = (preset: string) => {
+    switch (preset) {
+      case 'business':
+        setSize(300) // 1" at 300 DPI
+        break
+      case 'flyer':
+        setSize(900) // 3" at 300 DPI
+        break
+      case 'poster':
+        setSize(1800) // 6" at 300 DPI
+        break
+      case 'tshirt':
+        setSize(3000) // 10" at 300 DPI (high res for printing)
+        break
     }
   }
 
@@ -469,7 +545,7 @@ export default function QRCodeGenerator() {
             </CardHeader>
             <CardContent>
               <Tabs value={qrType} onValueChange={setQrType}>
-                <TabsList className="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-11 gap-2 h-auto">
+                <TabsList className="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-13 gap-2 h-auto">
                   <TabsTrigger value="url" className="flex items-center gap-1">
                     <Link2 className="h-4 w-4" />
                     <span className="hidden sm:inline">URL</span>
@@ -477,6 +553,14 @@ export default function QRCodeGenerator() {
                   <TabsTrigger value="text" className="flex items-center gap-1">
                     <QrCode className="h-4 w-4" />
                     <span className="hidden sm:inline">Text</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="social" className="flex items-center gap-1">
+                    <Music className="h-4 w-4" />
+                    <span className="hidden sm:inline">Social</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="location" className="flex items-center gap-1">
+                    <MapPin className="h-4 w-4" />
+                    <span className="hidden sm:inline">Map</span>
                   </TabsTrigger>
                   <TabsTrigger value="pet" className="flex items-center gap-1">
                     <Heart className="h-4 w-4" />
@@ -1039,6 +1123,75 @@ export default function QRCodeGenerator() {
                       : 'Use your app\'s package name (e.g., com.example.myapp)'}
                   </p>
                 </TabsContent>
+
+                <TabsContent value="social" className="space-y-4">
+                  <div>
+                    <Label htmlFor="social-platform">Platform</Label>
+                    <Select
+                      id="social-platform"
+                      value={socialPlatform}
+                      onChange={(e) => setSocialPlatform(e.target.value)}
+                    >
+                      <option value="twitter">Twitter / X</option>
+                      <option value="instagram">Instagram</option>
+                      <option value="facebook">Facebook</option>
+                      <option value="linkedin">LinkedIn</option>
+                      <option value="tiktok">TikTok</option>
+                      <option value="youtube">YouTube</option>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label htmlFor="social-username">Username / Profile *</Label>
+                    <Input
+                      id="social-username"
+                      placeholder="@username or profile URL"
+                      value={socialUsername}
+                      onChange={(e) => setSocialUsername(e.target.value)}
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Enter your username (with or without @) or full profile URL
+                  </p>
+                </TabsContent>
+
+                <TabsContent value="location" className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="location-lat">Latitude *</Label>
+                      <Input
+                        id="location-lat"
+                        type="number"
+                        step="any"
+                        placeholder="37.7749"
+                        value={locationLat}
+                        onChange={(e) => setLocationLat(e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="location-lng">Longitude *</Label>
+                      <Input
+                        id="location-lng"
+                        type="number"
+                        step="any"
+                        placeholder="-122.4194"
+                        value={locationLng}
+                        onChange={(e) => setLocationLng(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <Label htmlFor="location-label">Location Name (optional)</Label>
+                    <Input
+                      id="location-label"
+                      placeholder="San Francisco, CA"
+                      value={locationLabel}
+                      onChange={(e) => setLocationLabel(e.target.value)}
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Creates a Google Maps link. Find coordinates by right-clicking on Google Maps.
+                  </p>
+                </TabsContent>
               </Tabs>
             </CardContent>
           </Card>
@@ -1090,6 +1243,40 @@ export default function QRCodeGenerator() {
                   <option value="dots">Dots (Rounded)</option>
                   <option value="rounded">Rounded Squares</option>
                 </Select>
+              </div>
+
+              <div>
+                <Label htmlFor="finder-pattern">Corner Pattern</Label>
+                <Select
+                  id="finder-pattern"
+                  value={finderPattern}
+                  onChange={(e) => setFinderPattern(e.target.value as FinderPattern)}
+                >
+                  <option value="square">Square</option>
+                  <option value="rounded">Rounded</option>
+                  <option value="dots">Dots</option>
+                  <option value="extra-rounded">Extra Rounded</option>
+                </Select>
+              </div>
+
+              <div className="border-t pt-4">
+                <div className="flex items-center justify-between mb-2">
+                  <Label>Size Presets</Label>
+                </div>
+                <div className="grid grid-cols-4 gap-2">
+                  <Button type="button" variant="outline" size="sm" onClick={() => applySizePreset('business')}>
+                    Business Card
+                  </Button>
+                  <Button type="button" variant="outline" size="sm" onClick={() => applySizePreset('flyer')}>
+                    Flyer
+                  </Button>
+                  <Button type="button" variant="outline" size="sm" onClick={() => applySizePreset('poster')}>
+                    Poster
+                  </Button>
+                  <Button type="button" variant="outline" size="sm" onClick={() => applySizePreset('tshirt')}>
+                    T-Shirt
+                  </Button>
+                </div>
               </div>
 
               <div>
@@ -1153,6 +1340,111 @@ export default function QRCodeGenerator() {
                   max={10}
                   step={1}
                 />
+              </div>
+
+              <div className="border-t pt-4 space-y-3">
+                <div className="flex items-center gap-2">
+                  <input
+                    id="transparent-bg"
+                    type="checkbox"
+                    checked={transparentBg}
+                    onChange={(e) => setTransparentBg(e.target.checked)}
+                    className="cursor-pointer"
+                  />
+                  <Label htmlFor="transparent-bg" className="cursor-pointer">Transparent Background</Label>
+                </div>
+              </div>
+
+              <div className="border-t pt-4 space-y-3">
+                <div className="flex items-center gap-2">
+                  <input
+                    id="gradient-enabled"
+                    type="checkbox"
+                    checked={gradientEnabled}
+                    onChange={(e) => setGradientEnabled(e.target.checked)}
+                    className="cursor-pointer"
+                  />
+                  <Label htmlFor="gradient-enabled" className="cursor-pointer">Enable Gradient</Label>
+                </div>
+                {gradientEnabled && (
+                  <div className="space-y-3 pl-6 border-l-2">
+                    <div>
+                      <Label htmlFor="gradient-type">Gradient Type</Label>
+                      <Select
+                        id="gradient-type"
+                        value={gradientType}
+                        onChange={(e) => setGradientType(e.target.value as 'linear' | 'radial')}
+                      >
+                        <option value="linear">Linear</option>
+                        <option value="radial">Radial</option>
+                      </Select>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="gradient-start">Start Color</Label>
+                        <Input
+                          id="gradient-start"
+                          type="color"
+                          value={gradientColorStart}
+                          onChange={(e) => setGradientColorStart(e.target.value)}
+                          className="h-10"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="gradient-end">End Color</Label>
+                        <Input
+                          id="gradient-end"
+                          type="color"
+                          value={gradientColorEnd}
+                          onChange={(e) => setGradientColorEnd(e.target.value)}
+                          className="h-10"
+                        />
+                      </div>
+                    </div>
+                    {gradientType === 'linear' && (
+                      <div>
+                        <Label htmlFor="gradient-rotation">Rotation: {gradientRotation}°</Label>
+                        <Slider
+                          id="gradient-rotation"
+                          value={gradientRotation}
+                          onValueChange={setGradientRotation}
+                          min={0}
+                          max={360}
+                          step={15}
+                        />
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <div className="border-t pt-4 space-y-3">
+                <Label>Frame & Text</Label>
+                <div>
+                  <Label htmlFor="frame-style">Frame Style</Label>
+                  <Select
+                    id="frame-style"
+                    value={frameStyle}
+                    onChange={(e) => setFrameStyle(e.target.value as FrameStyle)}
+                  >
+                    <option value="none">None</option>
+                    <option value="simple">Simple</option>
+                    <option value="rounded">Rounded</option>
+                    <option value="banner">Banner</option>
+                  </Select>
+                </div>
+                {frameStyle !== 'none' && (
+                  <div>
+                    <Label htmlFor="frame-text">Frame Text</Label>
+                    <Input
+                      id="frame-text"
+                      placeholder="Scan Me!"
+                      value={frameText}
+                      onChange={(e) => setFrameText(e.target.value)}
+                      maxLength={30}
+                    />
+                  </div>
+                )}
               </div>
 
               <div className="border-t pt-4 space-y-3">
@@ -1349,14 +1641,20 @@ export default function QRCodeGenerator() {
                 <strong>Features:</strong>
               </p>
               <ul className="list-disc list-inside space-y-1 ml-2">
-                <li>11 QR code types (URL, Text, Pet ID, WiFi, vCard, Email, SMS, Phone, Calendar Events, Cryptocurrency, App Store)</li>
-                <li>3 visual styles (Squares, Dots, Rounded)</li>
+                <li>13 QR code types (URL, Text, Social Media, Location/Maps, Pet ID, WiFi, vCard, Email, SMS, Phone, Calendar Events, Cryptocurrency, App Store)</li>
+                <li>3 QR visual styles (Squares, Dots, Rounded)</li>
+                <li>4 custom corner patterns (Square, Rounded, Dots, Extra Rounded)</li>
+                <li>Gradient support (Linear & Radial)</li>
+                <li>Frame styles with custom text</li>
+                <li>Transparent background option</li>
+                <li>Size presets (Business Card, Flyer, Poster, T-Shirt)</li>
                 <li>Customizable colors, sizes, and margins</li>
-                <li>Adjustable error correction levels with tooltips</li>
+                <li>Adjustable error correction levels</li>
                 <li>Logo embedding support</li>
                 <li>Download as PNG, SVG, or PDF</li>
                 <li>Print-optimized view</li>
                 <li>Local history (last 10 QR codes)</li>
+                <li>Quick example templates</li>
                 <li>100% client-side - no server uploads</li>
                 <li>No tracking, no ads, completely free</li>
               </ul>

@@ -3,6 +3,16 @@ import jsPDF from 'jspdf';
 
 export type ErrorCorrectionLevel = 'L' | 'M' | 'Q' | 'H';
 export type QRStyle = 'squares' | 'dots' | 'rounded';
+export type FinderPattern = 'square' | 'rounded' | 'dots' | 'extra-rounded';
+export type FrameStyle = 'none' | 'simple' | 'rounded' | 'banner';
+
+export interface GradientConfig {
+  enabled: boolean;
+  type: 'linear' | 'radial';
+  colorStart: string;
+  colorEnd: string;
+  rotation?: number; // degrees, for linear gradient
+}
 
 export interface QRCodeOptions {
   content: string;
@@ -14,6 +24,11 @@ export interface QRCodeOptions {
   logoUrl?: string;
   logoSize?: number;
   style?: QRStyle;
+  gradient?: GradientConfig;
+  finderPattern?: FinderPattern;
+  frameStyle?: FrameStyle;
+  frameText?: string;
+  transparentBackground?: boolean;
 }
 
 export interface QRCodeResult {
@@ -25,14 +40,24 @@ export async function generateQRCode(options: QRCodeOptions): Promise<QRCodeResu
   const {
     content,
     errorCorrectionLevel,
-    size,
+    size: baseSize,
     foregroundColor,
     backgroundColor,
     margin,
     logoUrl,
     logoSize = 0.2,
     style = 'squares',
+    gradient,
+    finderPattern = 'square',
+    frameStyle = 'none',
+    frameText,
+    transparentBackground = false,
   } = options;
+
+  // Calculate size with frame
+  const frameHeight = (frameStyle !== 'none' && frameText) ? 60 : 0;
+  const size = baseSize;
+  const totalHeight = size + frameHeight;
 
   const qrOptions = {
     errorCorrectionLevel,
@@ -40,11 +65,11 @@ export async function generateQRCode(options: QRCodeOptions): Promise<QRCodeResu
     width: size,
     color: {
       dark: foregroundColor,
-      light: backgroundColor,
+      light: transparentBackground ? '#00000000' : backgroundColor,
     },
   };
 
-  // Generate QR code as data URL
+  // Generate base QR code as data URL
   let dataUrl = await QRCode.toDataURL(content, qrOptions);
 
   // Generate SVG
@@ -53,89 +78,177 @@ export async function generateQRCode(options: QRCodeOptions): Promise<QRCodeResu
     type: 'svg',
   });
 
-  // Apply custom styling if not squares
-  if (style !== 'squares') {
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
-    if (!ctx) throw new Error('Could not get canvas context');
+  // Create main canvas for custom styling
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new Error('Could not get canvas context');
 
-    canvas.width = size;
-    canvas.height = size;
+  canvas.width = size;
+  canvas.height = totalHeight;
 
-    // Draw base QR code first
-    const qrImage = new Image();
-    await new Promise((resolve, reject) => {
-      qrImage.onload = resolve;
-      qrImage.onerror = reject;
-      qrImage.src = dataUrl;
-    });
+  // Load base QR code
+  const qrImage = new Image();
+  await new Promise((resolve, reject) => {
+    qrImage.onload = resolve;
+    qrImage.onerror = reject;
+    qrImage.src = dataUrl;
+  });
 
-    // Get QR code data for custom styling
-    const tempCanvas = document.createElement('canvas');
-    const tempCtx = tempCanvas.getContext('2d');
-    if (!tempCtx) throw new Error('Could not get canvas context');
+  // Get QR code data for custom styling
+  const tempCanvas = document.createElement('canvas');
+  const tempCtx = tempCanvas.getContext('2d');
+  if (!tempCtx) throw new Error('Could not get canvas context');
 
-    tempCanvas.width = size;
-    tempCanvas.height = size;
-    tempCtx.drawImage(qrImage, 0, 0);
+  tempCanvas.width = size;
+  tempCanvas.height = size;
+  tempCtx.drawImage(qrImage, 0, 0);
 
-    const imageData = tempCtx.getImageData(0, 0, size, size);
+  const imageData = tempCtx.getImageData(0, 0, size, size);
 
-    // Clear and redraw with custom style
+  // Clear canvas with background
+  if (transparentBackground) {
+    ctx.clearRect(0, 0, size, totalHeight);
+  } else {
     ctx.fillStyle = backgroundColor;
-    ctx.fillRect(0, 0, size, size);
+    ctx.fillRect(0, 0, size, totalHeight);
+  }
+
+  // Calculate module size
+  const moduleCount = Math.sqrt(imageData.data.length / 4);
+  const moduleSize = size / moduleCount;
+
+  // Helper to check if position is a finder pattern corner
+  const isFinderPattern = (x: number, y: number) => {
+    const finderSize = 7;
+    return (
+      (x < finderSize && y < finderSize) || // Top-left
+      (x >= moduleCount - finderSize && y < finderSize) || // Top-right
+      (x < finderSize && y >= moduleCount - finderSize) // Bottom-left
+    );
+  };
+
+  // Set up gradient if enabled
+  if (gradient?.enabled) {
+    if (gradient.type === 'linear') {
+      const angle = (gradient.rotation || 0) * Math.PI / 180;
+      const x1 = size / 2 - Math.cos(angle) * size / 2;
+      const y1 = size / 2 - Math.sin(angle) * size / 2;
+      const x2 = size / 2 + Math.cos(angle) * size / 2;
+      const y2 = size / 2 + Math.sin(angle) * size / 2;
+      const grad = ctx.createLinearGradient(x1, y1, x2, y2);
+      grad.addColorStop(0, gradient.colorStart);
+      grad.addColorStop(1, gradient.colorEnd);
+      ctx.fillStyle = grad;
+    } else {
+      const grad = ctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
+      grad.addColorStop(0, gradient.colorStart);
+      grad.addColorStop(1, gradient.colorEnd);
+      ctx.fillStyle = grad;
+    }
+  } else {
     ctx.fillStyle = foregroundColor;
+  }
 
-    // Calculate module size
-    const moduleCount = Math.sqrt(imageData.data.length / 4);
-    const moduleSize = size / moduleCount;
+  // Draw QR modules with custom style
+  for (let y = 0; y < moduleCount; y++) {
+    for (let x = 0; x < moduleCount; x++) {
+      const idx = (y * moduleCount + x) * 4;
+      const isDark = imageData.data[idx] < 128;
 
-    // Draw with custom style
-    for (let y = 0; y < moduleCount; y++) {
-      for (let x = 0; x < moduleCount; x++) {
-        const idx = (y * moduleCount + x) * 4;
-        const isDark = imageData.data[idx] < 128;
+      if (isDark && !isFinderPattern(x, y)) {
+        const px = x * moduleSize;
+        const py = y * moduleSize;
 
-        if (isDark) {
-          const px = x * moduleSize;
-          const py = y * moduleSize;
+        if (style === 'dots') {
+          ctx.beginPath();
+          ctx.arc(px + moduleSize / 2, py + moduleSize / 2, moduleSize / 2.5, 0, 2 * Math.PI);
+          ctx.fill();
+        } else if (style === 'rounded') {
+          const radius = moduleSize / 4;
+          ctx.beginPath();
+          ctx.roundRect(px, py, moduleSize, moduleSize, radius);
+          ctx.fill();
+        } else {
+          ctx.fillRect(px, py, moduleSize, moduleSize);
+        }
+      }
+    }
+  }
 
-          if (style === 'dots') {
+  // Draw custom finder patterns
+  const drawFinderPattern = (x: number, y: number) => {
+    const px = x * moduleSize;
+    const py = y * moduleSize;
+    const patternSize = 7 * moduleSize;
+
+    if (finderPattern === 'rounded') {
+      // Outer square (rounded)
+      ctx.fillStyle = foregroundColor;
+      ctx.beginPath();
+      ctx.roundRect(px, py, patternSize, patternSize, moduleSize);
+      ctx.fill();
+
+      // Middle square (rounded, background)
+      ctx.fillStyle = transparentBackground ? 'rgba(255,255,255,0)' : backgroundColor;
+      ctx.beginPath();
+      ctx.roundRect(px + moduleSize, py + moduleSize, patternSize - 2 * moduleSize, patternSize - 2 * moduleSize, moduleSize / 2);
+      ctx.fill();
+
+      // Inner square (rounded, foreground)
+      ctx.fillStyle = foregroundColor;
+      ctx.beginPath();
+      ctx.roundRect(px + 2 * moduleSize, py + 2 * moduleSize, 3 * moduleSize, 3 * moduleSize, moduleSize / 2);
+      ctx.fill();
+    } else if (finderPattern === 'dots') {
+      // Outer ring of dots
+      ctx.fillStyle = foregroundColor;
+      for (let i = 0; i < 7; i++) {
+        for (let j = 0; j < 7; j++) {
+          if (i === 0 || i === 6 || j === 0 || j === 6) {
             ctx.beginPath();
-            ctx.arc(px + moduleSize / 2, py + moduleSize / 2, moduleSize / 2.5, 0, 2 * Math.PI);
-            ctx.fill();
-          } else if (style === 'rounded') {
-            const radius = moduleSize / 4;
-            ctx.beginPath();
-            ctx.roundRect(px, py, moduleSize, moduleSize, radius);
+            ctx.arc(px + i * moduleSize + moduleSize / 2, py + j * moduleSize + moduleSize / 2, moduleSize / 2.5, 0, 2 * Math.PI);
             ctx.fill();
           }
         }
       }
+      // Inner center
+      ctx.beginPath();
+      ctx.arc(px + 3.5 * moduleSize, py + 3.5 * moduleSize, 1.5 * moduleSize, 0, 2 * Math.PI);
+      ctx.fill();
+    } else if (finderPattern === 'extra-rounded') {
+      // Very round finder patterns
+      ctx.fillStyle = foregroundColor;
+      ctx.beginPath();
+      ctx.roundRect(px, py, patternSize, patternSize, moduleSize * 1.5);
+      ctx.fill();
+
+      ctx.fillStyle = transparentBackground ? 'rgba(255,255,255,0)' : backgroundColor;
+      ctx.beginPath();
+      ctx.roundRect(px + moduleSize, py + moduleSize, patternSize - 2 * moduleSize, patternSize - 2 * moduleSize, moduleSize);
+      ctx.fill();
+
+      ctx.fillStyle = foregroundColor;
+      ctx.beginPath();
+      ctx.arc(px + 3.5 * moduleSize, py + 3.5 * moduleSize, 1.5 * moduleSize, 0, 2 * Math.PI);
+      ctx.fill();
+    } else {
+      // Standard square finder pattern
+      ctx.fillStyle = foregroundColor;
+      ctx.fillRect(px, py, patternSize, patternSize);
+      ctx.fillStyle = transparentBackground ? 'rgba(255,255,255,0)' : backgroundColor;
+      ctx.fillRect(px + moduleSize, py + moduleSize, patternSize - 2 * moduleSize, patternSize - 2 * moduleSize);
+      ctx.fillStyle = foregroundColor;
+      ctx.fillRect(px + 2 * moduleSize, py + 2 * moduleSize, 3 * moduleSize, 3 * moduleSize);
     }
+  };
 
-    dataUrl = canvas.toDataURL();
-  }
+  // Draw the three finder patterns
+  drawFinderPattern(0, 0); // Top-left
+  drawFinderPattern(moduleCount - 7, 0); // Top-right
+  drawFinderPattern(0, moduleCount - 7); // Bottom-left
 
-  // If logo is provided, add it to the center
+  // Add logo if provided
   if (logoUrl) {
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
-    if (!ctx) throw new Error('Could not get canvas context');
-
-    canvas.width = size;
-    canvas.height = size;
-
-    // Draw QR code
-    const qrImage = new Image();
-    await new Promise((resolve, reject) => {
-      qrImage.onload = resolve;
-      qrImage.onerror = reject;
-      qrImage.src = dataUrl;
-    });
-    ctx.drawImage(qrImage, 0, 0);
-
-    // Draw logo
     const logo = new Image();
     logo.crossOrigin = 'anonymous';
     await new Promise((resolve, reject) => {
@@ -148,17 +261,73 @@ export async function generateQRCode(options: QRCodeOptions): Promise<QRCodeResu
     const logoX = (size - logoSizePixels) / 2;
     const logoY = (size - logoSizePixels) / 2;
 
-    // Draw white background for logo
-    ctx.fillStyle = backgroundColor;
-    ctx.fillRect(logoX - 10, logoY - 10, logoSizePixels + 20, logoSizePixels + 20);
+    // Draw background for logo
+    if (!transparentBackground) {
+      ctx.fillStyle = backgroundColor;
+      ctx.fillRect(logoX - 10, logoY - 10, logoSizePixels + 20, logoSizePixels + 20);
+    }
 
     // Draw logo
     ctx.drawImage(logo, logoX, logoY, logoSizePixels, logoSizePixels);
+  }
 
-    return {
-      dataUrl: canvas.toDataURL(),
-      svg,
-    };
+  // Add frame and text if specified
+  if (frameStyle !== 'none' && frameText) {
+    const frameCanvas = document.createElement('canvas');
+    const frameCtx = frameCanvas.getContext('2d');
+    if (!frameCtx) throw new Error('Could not get canvas context');
+
+    frameCanvas.width = size;
+    frameCanvas.height = totalHeight;
+
+    // Draw QR code on frame canvas
+    if (transparentBackground) {
+      frameCtx.clearRect(0, 0, size, totalHeight);
+    } else {
+      frameCtx.fillStyle = backgroundColor;
+      frameCtx.fillRect(0, 0, size, totalHeight);
+    }
+    frameCtx.drawImage(canvas, 0, 0);
+
+    // Draw frame based on style
+    if (frameStyle === 'simple') {
+      frameCtx.fillStyle = foregroundColor;
+      frameCtx.fillRect(0, size, size, frameHeight);
+      frameCtx.fillStyle = '#ffffff';
+      frameCtx.font = 'bold 20px Arial';
+      frameCtx.textAlign = 'center';
+      frameCtx.textBaseline = 'middle';
+      frameCtx.fillText(frameText, size / 2, size + frameHeight / 2);
+    } else if (frameStyle === 'rounded') {
+      frameCtx.fillStyle = foregroundColor;
+      frameCtx.beginPath();
+      frameCtx.roundRect(10, size + 10, size - 20, frameHeight - 20, 10);
+      frameCtx.fill();
+      frameCtx.fillStyle = '#ffffff';
+      frameCtx.font = 'bold 18px Arial';
+      frameCtx.textAlign = 'center';
+      frameCtx.textBaseline = 'middle';
+      frameCtx.fillText(frameText, size / 2, size + frameHeight / 2);
+    } else if (frameStyle === 'banner') {
+      // Draw banner ribbon
+      frameCtx.fillStyle = foregroundColor;
+      frameCtx.beginPath();
+      frameCtx.moveTo(0, size + 15);
+      frameCtx.lineTo(size, size + 15);
+      frameCtx.lineTo(size, size + frameHeight - 15);
+      frameCtx.lineTo(0, size + frameHeight - 15);
+      frameCtx.closePath();
+      frameCtx.fill();
+      frameCtx.fillStyle = '#ffffff';
+      frameCtx.font = 'bold 20px Arial';
+      frameCtx.textAlign = 'center';
+      frameCtx.textBaseline = 'middle';
+      frameCtx.fillText(frameText, size / 2, size + frameHeight / 2);
+    }
+
+    dataUrl = frameCanvas.toDataURL();
+  } else {
+    dataUrl = canvas.toDataURL();
   }
 
   return { dataUrl, svg };
@@ -281,6 +450,36 @@ export function generateAppStoreString(platform: 'ios' | 'android', appId: strin
   } else {
     return `https://play.google.com/store/apps/details?id=${appId}`;
   }
+}
+
+export function generateSocialMediaString(platform: string, username: string): string {
+  const cleanUsername = username.replace('@', '');
+
+  switch (platform) {
+    case 'twitter':
+      return `https://twitter.com/${cleanUsername}`;
+    case 'instagram':
+      return `https://instagram.com/${cleanUsername}`;
+    case 'linkedin':
+      return username.startsWith('http') ? username : `https://linkedin.com/in/${cleanUsername}`;
+    case 'facebook':
+      return `https://facebook.com/${cleanUsername}`;
+    case 'tiktok':
+      return `https://tiktok.com/@${cleanUsername}`;
+    case 'youtube':
+      return username.startsWith('http') ? username : `https://youtube.com/@${cleanUsername}`;
+    default:
+      return username;
+  }
+}
+
+export function generateLocationString(latitude: string, longitude: string, label?: string): string {
+  // Google Maps format: geo:latitude,longitude?q=latitude,longitude(label)
+  let result = `geo:${latitude},${longitude}`;
+  if (label) {
+    result += `?q=${latitude},${longitude}(${encodeURIComponent(label)})`;
+  }
+  return result;
 }
 
 export function generatePDF(dataUrl: string, filename: string = 'qrcode.pdf'): void {
