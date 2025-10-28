@@ -325,11 +325,7 @@ export default function QRCodeGenerator() {
       gradientEnabled, gradientType, gradientColorStart, gradientColorEnd, gradientRotation,
       finderPattern, frameStyle, frameText, transparentBg])
 
-  useEffect(() => {
-    if (content) {
-      generateQR()
-    }
-  }, [content, generateQR])
+  // Removed auto-generation - now requires button click
 
   const downloadQR = (format: "png" | "svg" | "pdf") => {
     if (format === "png" && qrDataUrl) {
@@ -1622,6 +1618,16 @@ export default function QRCodeGenerator() {
                 </div>
               )}
               <div className="flex flex-col items-center justify-center space-y-4">
+                {content && (
+                  <Button
+                    onClick={generateQR}
+                    size="lg"
+                    className="w-full max-w-md gap-2"
+                  >
+                    <QrCode className="h-5 w-5" />
+                    Generate QR Code
+                  </Button>
+                )}
                 {qrDataUrl ? (
                   <>
                     <div className="p-8 bg-white rounded-lg shadow-lg">
@@ -1649,7 +1655,7 @@ export default function QRCodeGenerator() {
                 ) : (
                   <div className="text-center py-12 text-muted-foreground">
                     <QrCode className="h-16 w-16 mx-auto mb-4 opacity-20" />
-                    <p>Enter some content to generate a QR code</p>
+                    <p>{content ? "Click 'Generate QR Code' to create" : "Enter some content to generate a QR code"}</p>
                   </div>
                 )}
               </div>
