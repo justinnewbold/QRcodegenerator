@@ -124,18 +124,13 @@ export default function QRCodeGenerator() {
   // Pet ID advanced toggle
   const [showPetAdvanced, setShowPetAdvanced] = useState<boolean>(false)
 
+  // Customization advanced toggle
+  const [showCustomizationAdvanced, setShowCustomizationAdvanced] = useState<boolean>(false)
+
   // Load history on mount
   useEffect(() => {
     setHistory(getHistory())
   }, [])
-
-  // Auto-switch to Low error correction when switching TO Pet ID (they have more data)
-  // But allow user to change it afterwards
-  useEffect(() => {
-    if (qrType === 'pet') {
-      setErrorLevel('L')
-    }
-  }, [qrType])
 
   useEffect(() => {
     let newContent = ""
@@ -180,18 +175,28 @@ export default function QRCodeGenerator() {
       case "pet":
         if (petName) {
           try {
-            const petData = {
+            // Build petData object with only non-empty fields to minimize QR complexity
+            const petData: any = {
               name: petName,
-              species: petSpecies,
-              breed: petBreed,
-              color: petColor,
-              age: petAge,
-              microchip: petMicrochip,
-              medical: petMedical,
-              contacts: petContacts.filter(c => c.name || c.phone),
-              customFields: petCustomFields.filter(f => f.label && f.value),
-              reward: petReward,
             }
+
+            // Only add fields that have values
+            if (petSpecies) petData.species = petSpecies
+            if (petBreed) petData.breed = petBreed
+            if (petColor) petData.color = petColor
+            if (petAge) petData.age = petAge
+            if (petMicrochip) petData.microchip = petMicrochip
+            if (petMedical) petData.medical = petMedical
+            if (petReward) petData.reward = petReward
+
+            // Only add contacts array if there are contacts with data
+            const validContacts = petContacts.filter(c => c.name || c.phone)
+            if (validContacts.length > 0) petData.contacts = validContacts
+
+            // Only add custom fields array if there are fields with data
+            const validFields = petCustomFields.filter(f => f.label && f.value)
+            if (validFields.length > 0) petData.customFields = validFields
+
             // Create URL to pet viewer page with encoded data
             // Use encodeURIComponent to handle special characters safely
             const jsonString = JSON.stringify(petData)
@@ -1258,101 +1263,13 @@ export default function QRCodeGenerator() {
           <Card>
             <CardHeader>
               <CardTitle>Customization</CardTitle>
-              <CardDescription>Customize your QR code appearance</CardDescription>
+              <CardDescription>Basic QR code appearance</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              <div>
-                <div className="flex items-center gap-2 mb-2">
-                  <Label htmlFor="error-level">Error Correction Level</Label>
-                  <div className="group relative">
-                    <Info className="h-4 w-4 text-muted-foreground cursor-help" />
-                    <div className="absolute left-0 bottom-full mb-2 hidden group-hover:block w-80 p-3 bg-popover text-popover-foreground border rounded-lg shadow-lg z-10">
-                      <p className="text-sm font-semibold mb-2">Error Correction Levels</p>
-                      <p className="text-xs mb-2">QR codes can still work even if partially damaged or dirty:</p>
-                      <ul className="text-xs space-y-1">
-                        <li><strong>Low (7%):</strong> Maximum data capacity, best for clean surfaces</li>
-                        <li><strong>Medium (15%):</strong> Good balance - recommended default</li>
-                        <li><strong>Quartile (25%):</strong> Better damage resistance, good for outdoor use</li>
-                        <li><strong>High (30%):</strong> Best damage resistance, ideal when adding logos</li>
-                      </ul>
-                      <p className="text-xs mt-2 text-muted-foreground">Higher correction = less data capacity but more damage resistance</p>
-                    </div>
-                  </div>
-                </div>
-                <Select
-                  id="error-level"
-                  value={errorLevel}
-                  onChange={(e) => setErrorLevel(e.target.value as ErrorCorrectionLevel)}
-                >
-                  <option value="L">Low (7%) - Maximum Data</option>
-                  <option value="M">Medium (15%) - Recommended</option>
-                  <option value="Q">Quartile (25%) - Outdoor Use</option>
-                  <option value="H">High (30%) - Best with Logos</option>
-                </Select>
-              </div>
-
-              <div>
-                <Label htmlFor="qr-style">QR Code Style</Label>
-                <Select
-                  id="qr-style"
-                  value={qrStyle}
-                  onChange={(e) => setQrStyle(e.target.value as QRStyle)}
-                >
-                  <option value="squares">Squares (Classic)</option>
-                  <option value="dots">Dots (Rounded)</option>
-                  <option value="rounded">Rounded Squares</option>
-                </Select>
-              </div>
-
-              <div>
-                <Label htmlFor="finder-pattern">Corner Pattern</Label>
-                <Select
-                  id="finder-pattern"
-                  value={finderPattern}
-                  onChange={(e) => setFinderPattern(e.target.value as FinderPattern)}
-                >
-                  <option value="square">Square</option>
-                  <option value="rounded">Rounded</option>
-                  <option value="dots">Dots</option>
-                  <option value="extra-rounded">Extra Rounded</option>
-                </Select>
-              </div>
-
-              <div className="border-t pt-4">
-                <div className="flex items-center justify-between mb-2">
-                  <Label>Size Presets</Label>
-                </div>
-                <div className="grid grid-cols-4 gap-2">
-                  <Button type="button" variant="outline" size="sm" onClick={() => applySizePreset('business')}>
-                    Business Card
-                  </Button>
-                  <Button type="button" variant="outline" size="sm" onClick={() => applySizePreset('flyer')}>
-                    Flyer
-                  </Button>
-                  <Button type="button" variant="outline" size="sm" onClick={() => applySizePreset('poster')}>
-                    Poster
-                  </Button>
-                  <Button type="button" variant="outline" size="sm" onClick={() => applySizePreset('tshirt')}>
-                    T-Shirt
-                  </Button>
-                </div>
-              </div>
-
-              <div>
-                <Label htmlFor="size">Size: {size}px</Label>
-                <Slider
-                  id="size"
-                  value={size}
-                  onValueChange={setSize}
-                  min={200}
-                  max={1000}
-                  step={50}
-                />
-              </div>
-
+              {/* Basic Options - Always Visible */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="fg-color">Foreground Color</Label>
+                  <Label htmlFor="fg-color">QR Code Color</Label>
                   <div className="flex gap-2">
                     <Input
                       id="fg-color"
@@ -1390,185 +1307,297 @@ export default function QRCodeGenerator() {
               </div>
 
               <div>
-                <Label htmlFor="margin">Margin: {margin}</Label>
+                <Label htmlFor="size">Size: {size}px</Label>
                 <Slider
-                  id="margin"
-                  value={margin}
-                  onValueChange={setMargin}
-                  min={0}
-                  max={10}
-                  step={1}
+                  id="size"
+                  value={size}
+                  onValueChange={setSize}
+                  min={200}
+                  max={1000}
+                  step={50}
                 />
               </div>
 
-              <div className="border-t pt-4 space-y-3">
-                <div className="flex items-center gap-2">
-                  <input
-                    id="transparent-bg"
-                    type="checkbox"
-                    checked={transparentBg}
-                    onChange={(e) => setTransparentBg(e.target.checked)}
-                    className="cursor-pointer"
-                  />
-                  <Label htmlFor="transparent-bg" className="cursor-pointer">Transparent Background</Label>
-                </div>
+              {/* Advanced Settings Toggle */}
+              <div className="border-t pt-4">
+                <Button
+                  type="button"
+                  variant={showCustomizationAdvanced ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setShowCustomizationAdvanced(!showCustomizationAdvanced)}
+                  className="w-full"
+                >
+                  {showCustomizationAdvanced ? "Hide" : "Show"} Advanced Settings
+                </Button>
+                {!showCustomizationAdvanced && (
+                  <p className="text-xs text-muted-foreground mt-2 text-center">
+                    Colors and size are usually all you need
+                  </p>
+                )}
               </div>
 
-              <div className="border-t pt-4 space-y-3">
-                <div className="flex items-center gap-2">
-                  <input
-                    id="gradient-enabled"
-                    type="checkbox"
-                    checked={gradientEnabled}
-                    onChange={(e) => setGradientEnabled(e.target.checked)}
-                    className="cursor-pointer"
-                  />
-                  <Label htmlFor="gradient-enabled" className="cursor-pointer">Enable Gradient</Label>
-                </div>
-                {gradientEnabled && (
-                  <div className="space-y-3 pl-6 border-l-2">
+              {/* Advanced Options */}
+              {showCustomizationAdvanced && (
+                <div className="space-y-6 border-2 border-blue-200 dark:border-blue-800 rounded-lg p-4 bg-blue-50/50 dark:bg-blue-950/20">
+                  <div>
+                    <div className="flex items-center gap-2 mb-2">
+                      <Label htmlFor="error-level">Error Correction Level</Label>
+                      <div className="group relative">
+                        <Info className="h-4 w-4 text-muted-foreground cursor-help" />
+                        <div className="absolute left-0 bottom-full mb-2 hidden group-hover:block w-80 p-3 bg-popover text-popover-foreground border rounded-lg shadow-lg z-10">
+                          <p className="text-sm font-semibold mb-2">Error Correction Levels</p>
+                          <p className="text-xs mb-2">QR codes can still work even if partially damaged or dirty:</p>
+                          <ul className="text-xs space-y-1">
+                            <li><strong>Low (7%):</strong> Maximum data capacity, best for clean surfaces</li>
+                            <li><strong>Medium (15%):</strong> Good balance - recommended default</li>
+                            <li><strong>Quartile (25%):</strong> Better damage resistance, good for outdoor use</li>
+                            <li><strong>High (30%):</strong> Best damage resistance, ideal when adding logos</li>
+                          </ul>
+                          <p className="text-xs mt-2 text-muted-foreground">Higher correction = less data capacity but more damage resistance</p>
+                        </div>
+                      </div>
+                    </div>
+                    <Select
+                      id="error-level"
+                      value={errorLevel}
+                      onChange={(e) => setErrorLevel(e.target.value as ErrorCorrectionLevel)}
+                    >
+                      <option value="L">Low (7%) - Maximum Data</option>
+                      <option value="M">Medium (15%) - Recommended</option>
+                      <option value="Q">Quartile (25%) - Outdoor Use</option>
+                      <option value="H">High (30%) - Best with Logos</option>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="qr-style">QR Code Style</Label>
+                    <Select
+                      id="qr-style"
+                      value={qrStyle}
+                      onChange={(e) => setQrStyle(e.target.value as QRStyle)}
+                    >
+                      <option value="squares">Squares (Classic)</option>
+                      <option value="dots">Dots (Rounded)</option>
+                      <option value="rounded">Rounded Squares</option>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="finder-pattern">Corner Pattern</Label>
+                    <Select
+                      id="finder-pattern"
+                      value={finderPattern}
+                      onChange={(e) => setFinderPattern(e.target.value as FinderPattern)}
+                    >
+                      <option value="square">Square</option>
+                      <option value="rounded">Rounded</option>
+                      <option value="dots">Dots</option>
+                      <option value="extra-rounded">Extra Rounded</option>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <Label>Size Presets</Label>
+                    </div>
+                    <div className="grid grid-cols-4 gap-2">
+                      <Button type="button" variant="outline" size="sm" onClick={() => applySizePreset('business')}>
+                        Business
+                      </Button>
+                      <Button type="button" variant="outline" size="sm" onClick={() => applySizePreset('flyer')}>
+                        Flyer
+                      </Button>
+                      <Button type="button" variant="outline" size="sm" onClick={() => applySizePreset('poster')}>
+                        Poster
+                      </Button>
+                      <Button type="button" variant="outline" size="sm" onClick={() => applySizePreset('tshirt')}>
+                        T-Shirt
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="margin">Margin: {margin}</Label>
+                    <Slider
+                      id="margin"
+                      value={margin}
+                      onValueChange={setMargin}
+                      min={0}
+                      max={10}
+                      step={1}
+                    />
+                  </div>
+
+                  <div className="border-t pt-4 space-y-3">
+                    <div className="flex items-center gap-2">
+                      <input
+                        id="transparent-bg"
+                        type="checkbox"
+                        checked={transparentBg}
+                        onChange={(e) => setTransparentBg(e.target.checked)}
+                        className="cursor-pointer"
+                      />
+                      <Label htmlFor="transparent-bg" className="cursor-pointer">Transparent Background</Label>
+                    </div>
+                  </div>
+
+                  <div className="border-t pt-4 space-y-3">
+                    <div className="flex items-center gap-2">
+                      <input
+                        id="gradient-enabled"
+                        type="checkbox"
+                        checked={gradientEnabled}
+                        onChange={(e) => setGradientEnabled(e.target.checked)}
+                        className="cursor-pointer"
+                      />
+                      <Label htmlFor="gradient-enabled" className="cursor-pointer">Enable Gradient</Label>
+                    </div>
+                    {gradientEnabled && (
+                      <div className="space-y-3 pl-6 border-l-2">
+                        <div>
+                          <Label htmlFor="gradient-type">Gradient Type</Label>
+                          <Select
+                            id="gradient-type"
+                            value={gradientType}
+                            onChange={(e) => setGradientType(e.target.value as 'linear' | 'radial')}
+                          >
+                            <option value="linear">Linear</option>
+                            <option value="radial">Radial</option>
+                          </Select>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <Label htmlFor="gradient-start">Start Color</Label>
+                            <Input
+                              id="gradient-start"
+                              type="color"
+                              value={gradientColorStart}
+                              onChange={(e) => setGradientColorStart(e.target.value)}
+                              className="h-10"
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="gradient-end">End Color</Label>
+                            <Input
+                              id="gradient-end"
+                              type="color"
+                              value={gradientColorEnd}
+                              onChange={(e) => setGradientColorEnd(e.target.value)}
+                              className="h-10"
+                            />
+                          </div>
+                        </div>
+                        {gradientType === 'linear' && (
+                          <div>
+                            <Label htmlFor="gradient-rotation">Rotation: {gradientRotation}°</Label>
+                            <Slider
+                              id="gradient-rotation"
+                              value={gradientRotation}
+                              onValueChange={setGradientRotation}
+                              min={0}
+                              max={360}
+                              step={15}
+                            />
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="border-t pt-4 space-y-3">
+                    <Label>Frame & Text</Label>
                     <div>
-                      <Label htmlFor="gradient-type">Gradient Type</Label>
+                      <Label htmlFor="frame-style">Frame Style</Label>
                       <Select
-                        id="gradient-type"
-                        value={gradientType}
-                        onChange={(e) => setGradientType(e.target.value as 'linear' | 'radial')}
+                        id="frame-style"
+                        value={frameStyle}
+                        onChange={(e) => setFrameStyle(e.target.value as FrameStyle)}
                       >
-                        <option value="linear">Linear</option>
-                        <option value="radial">Radial</option>
+                        <option value="none">None</option>
+                        <option value="simple">Simple</option>
+                        <option value="rounded">Rounded</option>
+                        <option value="banner">Banner</option>
                       </Select>
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
+                    {frameStyle !== 'none' && (
                       <div>
-                        <Label htmlFor="gradient-start">Start Color</Label>
+                        <Label htmlFor="frame-text">Frame Text</Label>
                         <Input
-                          id="gradient-start"
-                          type="color"
-                          value={gradientColorStart}
-                          onChange={(e) => setGradientColorStart(e.target.value)}
-                          className="h-10"
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="gradient-end">End Color</Label>
-                        <Input
-                          id="gradient-end"
-                          type="color"
-                          value={gradientColorEnd}
-                          onChange={(e) => setGradientColorEnd(e.target.value)}
-                          className="h-10"
-                        />
-                      </div>
-                    </div>
-                    {gradientType === 'linear' && (
-                      <div>
-                        <Label htmlFor="gradient-rotation">Rotation: {gradientRotation}°</Label>
-                        <Slider
-                          id="gradient-rotation"
-                          value={gradientRotation}
-                          onValueChange={setGradientRotation}
-                          min={0}
-                          max={360}
-                          step={15}
+                          id="frame-text"
+                          placeholder="Scan Me!"
+                          value={frameText}
+                          onChange={(e) => setFrameText(e.target.value)}
+                          maxLength={30}
                         />
                       </div>
                     )}
                   </div>
-                )}
-              </div>
 
-              <div className="border-t pt-4 space-y-3">
-                <Label>Frame & Text</Label>
-                <div>
-                  <Label htmlFor="frame-style">Frame Style</Label>
-                  <Select
-                    id="frame-style"
-                    value={frameStyle}
-                    onChange={(e) => setFrameStyle(e.target.value as FrameStyle)}
-                  >
-                    <option value="none">None</option>
-                    <option value="simple">Simple</option>
-                    <option value="rounded">Rounded</option>
-                    <option value="banner">Banner</option>
-                  </Select>
+                  <div className="border-t pt-4 space-y-3">
+                    <Label>{qrType === 'pet' ? 'Add Image (Optional - Add Last)' : 'Logo (Optional - Add Last)'}</Label>
+                    <div className="space-y-2">
+                      <div>
+                        <Label htmlFor="logo-file" className="text-sm font-normal text-muted-foreground">
+                          Upload Image
+                        </Label>
+                        <Input
+                          id="logo-file"
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0]
+                            if (file) {
+                              // Higher quality for logo since it's just overlaid, not encoded in QR data
+                              compressImage(file, 300, 300, 0.9)
+                                .then((compressed) => {
+                                  setLogoUrl(compressed)
+                                })
+                                .catch((error) => {
+                                  console.error('Error compressing image:', error)
+                                  alert('Failed to compress image. Please try a different image.')
+                                })
+                            }
+                          }}
+                          className="cursor-pointer"
+                        />
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="flex-1 border-t" />
+                        <span className="text-xs text-muted-foreground">OR</span>
+                        <div className="flex-1 border-t" />
+                      </div>
+                      <div>
+                        <Label htmlFor="logo-url" className="text-sm font-normal text-muted-foreground">
+                          Image URL
+                        </Label>
+                        <Input
+                          id="logo-url"
+                          type="url"
+                          placeholder="https://example.com/logo.png"
+                          value={logoUrl}
+                          onChange={(e) => setLogoUrl(e.target.value)}
+                        />
+                      </div>
+                      {logoUrl && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setLogoUrl("")}
+                          className="w-full"
+                        >
+                          {qrType === 'pet' ? 'Clear Image' : 'Clear Logo'}
+                        </Button>
+                      )}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {qrType === 'pet'
+                        ? 'Upload last - Image appears in center of QR code'
+                        : 'Upload last - Logo appears in center (works best with high error correction)'}
+                    </p>
+                  </div>
                 </div>
-                {frameStyle !== 'none' && (
-                  <div>
-                    <Label htmlFor="frame-text">Frame Text</Label>
-                    <Input
-                      id="frame-text"
-                      placeholder="Scan Me!"
-                      value={frameText}
-                      onChange={(e) => setFrameText(e.target.value)}
-                      maxLength={30}
-                    />
-                  </div>
-                )}
-              </div>
-
-              <div className="border-t pt-4 space-y-3">
-                <Label>{qrType === 'pet' ? 'Add Image (Optional - Add Last)' : 'Logo (Optional - Add Last)'}</Label>
-                <div className="space-y-2">
-                  <div>
-                    <Label htmlFor="logo-file" className="text-sm font-normal text-muted-foreground">
-                      Upload Image
-                    </Label>
-                    <Input
-                      id="logo-file"
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0]
-                        if (file) {
-                          // Higher quality for logo since it's just overlaid, not encoded in QR data
-                          compressImage(file, 300, 300, 0.9)
-                            .then((compressed) => {
-                              setLogoUrl(compressed)
-                            })
-                            .catch((error) => {
-                              console.error('Error compressing image:', error)
-                              alert('Failed to compress image. Please try a different image.')
-                            })
-                        }
-                      }}
-                      className="cursor-pointer"
-                    />
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="flex-1 border-t" />
-                    <span className="text-xs text-muted-foreground">OR</span>
-                    <div className="flex-1 border-t" />
-                  </div>
-                  <div>
-                    <Label htmlFor="logo-url" className="text-sm font-normal text-muted-foreground">
-                      Image URL
-                    </Label>
-                    <Input
-                      id="logo-url"
-                      type="url"
-                      placeholder="https://example.com/logo.png"
-                      value={logoUrl}
-                      onChange={(e) => setLogoUrl(e.target.value)}
-                    />
-                  </div>
-                  {logoUrl && (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setLogoUrl("")}
-                      className="w-full"
-                    >
-                      {qrType === 'pet' ? 'Clear Image' : 'Clear Logo'}
-                    </Button>
-                  )}
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  {qrType === 'pet'
-                    ? 'Upload last - Image appears in center of QR code'
-                    : 'Upload last - Logo appears in center (works best with high error correction)'}
-                </p>
-              </div>
+              )}
             </CardContent>
           </Card>
         </div>
