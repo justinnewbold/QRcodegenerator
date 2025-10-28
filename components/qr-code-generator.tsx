@@ -18,14 +18,19 @@ import {
   generateCalendarString,
   generateCryptoString,
   generateAppStoreString,
+  generateSocialMediaString,
+  generateLocationString,
   generatePDF,
   type ErrorCorrectionLevel,
   type QRCodeOptions,
   type QRStyle,
+  type FinderPattern,
+  type FrameStyle,
+  type GradientConfig,
 } from "@/lib/qr-generator"
 import { compressImage, estimateQRDataSize, getQRCodeCapacity } from "@/lib/image-utils"
 import { saveToHistory, getHistory, clearHistory, deleteHistoryItem, type QRHistoryItem } from "@/lib/qr-history"
-import { Download, QrCode, Wifi, Mail, Phone, MessageSquare, User, Link2, Heart, Plus, X, AlertTriangle, Info, Calendar, Coins, Smartphone, History, FileText, Printer, Trash2 } from "lucide-react"
+import { Download, QrCode, Wifi, Mail, Phone, MessageSquare, User, Link2, Heart, Plus, X, AlertTriangle, Info, Calendar, Coins, Smartphone, History, FileText, Printer, Trash2, MapPin, Twitter, Instagram, Linkedin, Facebook, Music } from "lucide-react"
 
 export default function QRCodeGenerator() {
   const [qrType, setQrType] = useState<string>("url")
@@ -96,17 +101,36 @@ export default function QRCodeGenerator() {
   const [appPlatform, setAppPlatform] = useState<'ios' | 'android'>('ios')
   const [appId, setAppId] = useState<string>("")
 
+  // Social Media fields
+  const [socialPlatform, setSocialPlatform] = useState<string>('twitter')
+  const [socialUsername, setSocialUsername] = useState<string>("")
+
+  // Location fields
+  const [locationLat, setLocationLat] = useState<string>("")
+  const [locationLng, setLocationLng] = useState<string>("")
+  const [locationLabel, setLocationLabel] = useState<string>("")
+
+  // Advanced styling
+  const [finderPattern, setFinderPattern] = useState<FinderPattern>("square")
+  const [frameStyle, setFrameStyle] = useState<FrameStyle>("none")
+  const [frameText, setFrameText] = useState<string>("")
+  const [transparentBg, setTransparentBg] = useState<boolean>(false)
+  const [gradientEnabled, setGradientEnabled] = useState<boolean>(false)
+  const [gradientType, setGradientType] = useState<'linear' | 'radial'>('linear')
+  const [gradientColorStart, setGradientColorStart] = useState<string>("#667eea")
+  const [gradientColorEnd, setGradientColorEnd] = useState<string>("#764ba2")
+  const [gradientRotation, setGradientRotation] = useState<number>(45)
+
+  // Pet ID advanced toggle
+  const [showPetAdvanced, setShowPetAdvanced] = useState<boolean>(false)
+
+  // Customization advanced toggle
+  const [showCustomizationAdvanced, setShowCustomizationAdvanced] = useState<boolean>(false)
+
   // Load history on mount
   useEffect(() => {
     setHistory(getHistory())
   }, [])
-
-  // Auto-switch to Low error correction for Pet IDs (they have more data)
-  useEffect(() => {
-    if (qrType === 'pet' && errorLevel !== 'L') {
-      setErrorLevel('L')
-    }
-  }, [qrType, errorLevel])
 
   useEffect(() => {
     let newContent = ""
@@ -151,18 +175,28 @@ export default function QRCodeGenerator() {
       case "pet":
         if (petName) {
           try {
-            const petData = {
+            // Build petData object with only non-empty fields to minimize QR complexity
+            const petData: any = {
               name: petName,
-              species: petSpecies,
-              breed: petBreed,
-              color: petColor,
-              age: petAge,
-              microchip: petMicrochip,
-              medical: petMedical,
-              contacts: petContacts.filter(c => c.name || c.phone),
-              customFields: petCustomFields.filter(f => f.label && f.value),
-              reward: petReward,
             }
+
+            // Only add fields that have values
+            if (petSpecies) petData.species = petSpecies
+            if (petBreed) petData.breed = petBreed
+            if (petColor) petData.color = petColor
+            if (petAge) petData.age = petAge
+            if (petMicrochip) petData.microchip = petMicrochip
+            if (petMedical) petData.medical = petMedical
+            if (petReward) petData.reward = petReward
+
+            // Only add contacts array if there are contacts with data
+            const validContacts = petContacts.filter(c => c.name || c.phone)
+            if (validContacts.length > 0) petData.contacts = validContacts
+
+            // Only add custom fields array if there are fields with data
+            const validFields = petCustomFields.filter(f => f.label && f.value)
+            if (validFields.length > 0) petData.customFields = validFields
+
             // Create URL to pet viewer page with encoded data
             // Use encodeURIComponent to handle special characters safely
             const jsonString = JSON.stringify(petData)
@@ -195,6 +229,16 @@ export default function QRCodeGenerator() {
           newContent = generateAppStoreString(appPlatform, appId)
         }
         break
+      case "social":
+        if (socialUsername) {
+          newContent = generateSocialMediaString(socialPlatform, socialUsername)
+        }
+        break
+      case "location":
+        if (locationLat && locationLng) {
+          newContent = generateLocationString(locationLat, locationLng, locationLabel)
+        }
+        break
     }
 
     setContent(newContent)
@@ -203,7 +247,8 @@ export default function QRCodeGenerator() {
       smsPhone, smsMessage, phoneNumber, plainText, petName, petSpecies, petBreed, petColor,
       petAge, petMicrochip, petMedical, petContacts, petCustomFields, petReward,
       calendarTitle, calendarLocation, calendarStart, calendarEnd, calendarDescription,
-      cryptoAddress, cryptoAmount, cryptoLabel, appPlatform, appId])
+      cryptoAddress, cryptoAmount, cryptoLabel, appPlatform, appId,
+      socialPlatform, socialUsername, locationLat, locationLng, locationLabel])
 
   const generateQR = useCallback(async () => {
     if (!content) {
@@ -225,6 +270,14 @@ export default function QRCodeGenerator() {
     setSizeWarning("")
 
     try {
+      const gradientConfig: GradientConfig = {
+        enabled: gradientEnabled,
+        type: gradientType,
+        colorStart: gradientColorStart,
+        colorEnd: gradientColorEnd,
+        rotation: gradientRotation,
+      };
+
       const options: QRCodeOptions = {
         content,
         errorCorrectionLevel: errorLevel,
@@ -234,6 +287,11 @@ export default function QRCodeGenerator() {
         margin,
         logoUrl: logoUrl || undefined,
         style: qrStyle,
+        gradient: gradientConfig,
+        finderPattern,
+        frameStyle,
+        frameText: frameText || undefined,
+        transparentBackground: transparentBg,
       }
 
       const result = await generateQRCode(options)
@@ -263,7 +321,9 @@ export default function QRCodeGenerator() {
         setSizeWarning("QR code data is too large. Try reducing the amount of information.")
       }
     }
-  }, [content, errorLevel, size, fgColor, bgColor, margin, logoUrl, qrStyle, qrType])
+  }, [content, errorLevel, size, fgColor, bgColor, margin, logoUrl, qrStyle, qrType,
+      gradientEnabled, gradientType, gradientColorStart, gradientColorEnd, gradientRotation,
+      finderPattern, frameStyle, frameText, transparentBg])
 
   useEffect(() => {
     if (content) {
@@ -438,6 +498,31 @@ export default function QRCodeGenerator() {
           setAppId('com.whatsapp')
         }
         break
+      case 'social':
+        setSocialUsername('username')
+        break
+      case 'location':
+        setLocationLat('37.7749')
+        setLocationLng('-122.4194')
+        setLocationLabel('San Francisco, CA')
+        break
+    }
+  }
+
+  const applySizePreset = (preset: string) => {
+    switch (preset) {
+      case 'business':
+        setSize(300) // 1" at 300 DPI
+        break
+      case 'flyer':
+        setSize(900) // 3" at 300 DPI
+        break
+      case 'poster':
+        setSize(1800) // 6" at 300 DPI
+        break
+      case 'tshirt':
+        setSize(3000) // 10" at 300 DPI (high res for printing)
+        break
     }
   }
 
@@ -469,7 +554,7 @@ export default function QRCodeGenerator() {
             </CardHeader>
             <CardContent>
               <Tabs value={qrType} onValueChange={setQrType}>
-                <TabsList className="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-11 gap-2 h-auto">
+                <TabsList className="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-13 gap-2 h-auto">
                   <TabsTrigger value="url" className="flex items-center gap-1">
                     <Link2 className="h-4 w-4" />
                     <span className="hidden sm:inline">URL</span>
@@ -477,6 +562,14 @@ export default function QRCodeGenerator() {
                   <TabsTrigger value="text" className="flex items-center gap-1">
                     <QrCode className="h-4 w-4" />
                     <span className="hidden sm:inline">Text</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="social" className="flex items-center gap-1">
+                    <Music className="h-4 w-4" />
+                    <span className="hidden sm:inline">Social</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="location" className="flex items-center gap-1">
+                    <MapPin className="h-4 w-4" />
+                    <span className="hidden sm:inline">Map</span>
                   </TabsTrigger>
                   <TabsTrigger value="pet" className="flex items-center gap-1">
                     <Heart className="h-4 w-4" />
@@ -705,225 +798,280 @@ export default function QRCodeGenerator() {
 
                 <TabsContent value="pet" className="space-y-4">
                   <div className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label htmlFor="pet-name">Pet Name *</Label>
-                        <Input
-                          id="pet-name"
-                          placeholder="Buddy"
-                          value={petName}
-                          onChange={(e) => setPetName(e.target.value)}
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="pet-species">Species</Label>
-                        <Input
-                          id="pet-species"
-                          placeholder="Dog, Cat, etc."
-                          value={petSpecies}
-                          onChange={(e) => setPetSpecies(e.target.value)}
-                        />
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label htmlFor="pet-breed">Breed</Label>
-                        <Input
-                          id="pet-breed"
-                          placeholder="Golden Retriever"
-                          value={petBreed}
-                          onChange={(e) => setPetBreed(e.target.value)}
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="pet-color">Color/Markings</Label>
-                        <Input
-                          id="pet-color"
-                          placeholder="Golden, white chest"
-                          value={petColor}
-                          onChange={(e) => setPetColor(e.target.value)}
-                        />
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label htmlFor="pet-age">Age</Label>
-                        <Input
-                          id="pet-age"
-                          placeholder="3 years"
-                          value={petAge}
-                          onChange={(e) => setPetAge(e.target.value)}
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="pet-microchip">Microchip #</Label>
-                        <Input
-                          id="pet-microchip"
-                          placeholder="123456789"
-                          value={petMicrochip}
-                          onChange={(e) => setPetMicrochip(e.target.value)}
-                        />
-                      </div>
-                    </div>
-
+                    {/* Essential Fields */}
                     <div>
-                      <Label htmlFor="pet-medical">Medical Info / Allergies</Label>
+                      <Label htmlFor="pet-name">Pet Name *</Label>
                       <Input
-                        id="pet-medical"
-                        placeholder="Allergic to peanuts, takes heart medication"
-                        value={petMedical}
-                        onChange={(e) => setPetMedical(e.target.value)}
+                        id="pet-name"
+                        placeholder="Buddy"
+                        value={petName}
+                        onChange={(e) => setPetName(e.target.value)}
+                      />
+                    </div>
+
+                    {/* Primary Contact Info */}
+                    <div>
+                      <Label htmlFor="contact-name-0">Owner/Contact Name</Label>
+                      <Input
+                        id="contact-name-0"
+                        placeholder="John Doe"
+                        value={petContacts[0]?.name || ""}
+                        onChange={(e) => {
+                          const newContacts = [...petContacts]
+                          if (!newContacts[0]) newContacts[0] = {name: "", phone: "", email: "", relation: "Owner"}
+                          newContacts[0].name = e.target.value
+                          setPetContacts(newContacts)
+                        }}
                       />
                     </div>
 
                     <div>
-                      <Label htmlFor="pet-reward">Reward Info (optional)</Label>
+                      <Label htmlFor="contact-phone-0">Phone to Call/Text</Label>
                       <Input
-                        id="pet-reward"
-                        placeholder="$100 reward if found"
-                        value={petReward}
-                        onChange={(e) => setPetReward(e.target.value)}
+                        id="contact-phone-0"
+                        type="tel"
+                        placeholder="+1234567890"
+                        value={petContacts[0]?.phone || ""}
+                        onChange={(e) => {
+                          const newContacts = [...petContacts]
+                          if (!newContacts[0]) newContacts[0] = {name: "", phone: "", email: "", relation: "Owner"}
+                          newContacts[0].phone = e.target.value
+                          setPetContacts(newContacts)
+                        }}
                       />
                     </div>
 
+                    {/* One Custom Field */}
+                    <div>
+                      <Label>Custom Field (Optional)</Label>
+                      <div className="grid grid-cols-2 gap-3">
+                        <Input
+                          placeholder="Label (e.g., Favorite Toy)"
+                          value={petCustomFields[0]?.label || ""}
+                          onChange={(e) => {
+                            const newFields = [...petCustomFields]
+                            if (!newFields[0]) newFields[0] = {label: "", value: ""}
+                            newFields[0].label = e.target.value
+                            setPetCustomFields(newFields)
+                          }}
+                        />
+                        <Input
+                          placeholder="Value"
+                          value={petCustomFields[0]?.value || ""}
+                          onChange={(e) => {
+                            const newFields = [...petCustomFields]
+                            if (!newFields[0]) newFields[0] = {label: "", value: ""}
+                            newFields[0].value = e.target.value
+                            setPetCustomFields(newFields)
+                          }}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Advanced Options Toggle */}
                     <div className="border-t pt-4">
-                      <div className="flex items-center justify-between mb-3">
-                        <Label>Emergency Contacts</Label>
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          onClick={() => setPetContacts([...petContacts, {name: "", phone: "", email: "", relation: ""}])}
-                        >
-                          <Plus className="h-4 w-4 mr-1" />
-                          Add Contact
-                        </Button>
-                      </div>
+                      <Button
+                        type="button"
+                        variant={showPetAdvanced ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setShowPetAdvanced(!showPetAdvanced)}
+                        className="w-full"
+                      >
+                        {showPetAdvanced ? "Hide" : "Show"} Advanced Options
+                      </Button>
+                      {!showPetAdvanced && (
+                        <p className="text-xs text-muted-foreground mt-2 text-center">
+                          Keep it simple for better scanning reliability
+                        </p>
+                      )}
+                    </div>
 
-                      {petContacts.map((contact, index) => (
-                        <div key={index} className="space-y-3 mb-4 p-3 border rounded-lg relative">
-                          {petContacts.length > 1 && (
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant="ghost"
-                              className="absolute top-2 right-2"
-                              onClick={() => setPetContacts(petContacts.filter((_, i) => i !== index))}
-                            >
-                              <X className="h-4 w-4" />
-                            </Button>
-                          )}
-                          <div className="grid grid-cols-2 gap-3">
-                            <div>
-                              <Label htmlFor={`contact-name-${index}`}>Name</Label>
-                              <Input
-                                id={`contact-name-${index}`}
-                                placeholder="John Doe"
-                                value={contact.name}
-                                onChange={(e) => {
-                                  const newContacts = [...petContacts]
-                                  newContacts[index].name = e.target.value
-                                  setPetContacts(newContacts)
-                                }}
-                              />
-                            </div>
-                            <div>
-                              <Label htmlFor={`contact-relation-${index}`}>Relation</Label>
-                              <Input
-                                id={`contact-relation-${index}`}
-                                placeholder="Owner, Vet, etc."
-                                value={contact.relation}
-                                onChange={(e) => {
-                                  const newContacts = [...petContacts]
-                                  newContacts[index].relation = e.target.value
-                                  setPetContacts(newContacts)
-                                }}
-                              />
-                            </div>
-                          </div>
-                          <div className="grid grid-cols-2 gap-3">
-                            <div>
-                              <Label htmlFor={`contact-phone-${index}`}>Phone</Label>
-                              <Input
-                                id={`contact-phone-${index}`}
-                                type="tel"
-                                placeholder="+1234567890"
-                                value={contact.phone}
-                                onChange={(e) => {
-                                  const newContacts = [...petContacts]
-                                  newContacts[index].phone = e.target.value
-                                  setPetContacts(newContacts)
-                                }}
-                              />
-                            </div>
-                            <div>
-                              <Label htmlFor={`contact-email-${index}`}>Email</Label>
-                              <Input
-                                id={`contact-email-${index}`}
-                                type="email"
-                                placeholder="john@example.com"
-                                value={contact.email}
-                                onChange={(e) => {
-                                  const newContacts = [...petContacts]
-                                  newContacts[index].email = e.target.value
-                                  setPetContacts(newContacts)
-                                }}
-                              />
-                            </div>
+                    {/* Advanced Fields - Warning + All Extra Options */}
+                    {showPetAdvanced && (
+                      <div className="border-2 border-amber-200 dark:border-amber-800 rounded-lg p-4 space-y-4 bg-amber-50/50 dark:bg-amber-950/20">
+                        <div className="flex items-start gap-2 mb-4">
+                          <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
+                          <div>
+                            <p className="font-semibold text-amber-900 dark:text-amber-100 text-sm">Warning: More Data = Harder to Scan</p>
+                            <p className="text-xs text-amber-800 dark:text-amber-200 mt-1">
+                              Adding more information increases QR code complexity and reduces error correction.
+                              Only add essential details for best scanning reliability.
+                            </p>
                           </div>
                         </div>
-                      ))}
-                    </div>
 
-                    <div className="border-t pt-4">
-                      <div className="flex items-center justify-between mb-3">
-                        <Label>Custom Fields (optional)</Label>
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          onClick={() => setPetCustomFields([...petCustomFields, {label: "", value: ""}])}
-                        >
-                          <Plus className="h-4 w-4 mr-1" />
-                          Add Field
-                        </Button>
-                      </div>
-
-                      {petCustomFields.map((field, index) => (
-                        <div key={index} className="grid grid-cols-2 gap-3 mb-3">
-                          <Input
-                            placeholder="Label (e.g., Favorite Toy)"
-                            value={field.label}
-                            onChange={(e) => {
-                              const newFields = [...petCustomFields]
-                              newFields[index].label = e.target.value
-                              setPetCustomFields(newFields)
-                            }}
-                          />
-                          <div className="flex gap-2">
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <Label htmlFor="pet-species">Species</Label>
                             <Input
-                              placeholder="Value"
-                              value={field.value}
-                              onChange={(e) => {
-                                const newFields = [...petCustomFields]
-                                newFields[index].value = e.target.value
-                                setPetCustomFields(newFields)
-                              }}
+                              id="pet-species"
+                              placeholder="Dog, Cat, etc."
+                              value={petSpecies}
+                              onChange={(e) => setPetSpecies(e.target.value)}
                             />
+                          </div>
+                          <div>
+                            <Label htmlFor="pet-breed">Breed</Label>
+                            <Input
+                              id="pet-breed"
+                              placeholder="Golden Retriever"
+                              value={petBreed}
+                              onChange={(e) => setPetBreed(e.target.value)}
+                            />
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <Label htmlFor="pet-color">Color/Markings</Label>
+                            <Input
+                              id="pet-color"
+                              placeholder="Golden, white chest"
+                              value={petColor}
+                              onChange={(e) => setPetColor(e.target.value)}
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="pet-age">Age</Label>
+                            <Input
+                              id="pet-age"
+                              placeholder="3 years"
+                              value={petAge}
+                              onChange={(e) => setPetAge(e.target.value)}
+                            />
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <Label htmlFor="pet-microchip">Microchip #</Label>
+                            <Input
+                              id="pet-microchip"
+                              placeholder="123456789"
+                              value={petMicrochip}
+                              onChange={(e) => setPetMicrochip(e.target.value)}
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="pet-reward">Reward</Label>
+                            <Input
+                              id="pet-reward"
+                              placeholder="$100 if found"
+                              value={petReward}
+                              onChange={(e) => setPetReward(e.target.value)}
+                            />
+                          </div>
+                        </div>
+
+                        <div>
+                          <Label htmlFor="pet-medical">Medical Info / Allergies</Label>
+                          <Input
+                            id="pet-medical"
+                            placeholder="Allergic to peanuts, takes heart medication"
+                            value={petMedical}
+                            onChange={(e) => setPetMedical(e.target.value)}
+                          />
+                        </div>
+
+                        <div className="border-t pt-4">
+                          <div className="flex items-center justify-between mb-3">
+                            <Label>Additional Contacts</Label>
                             <Button
                               type="button"
                               size="sm"
-                              variant="ghost"
-                              onClick={() => setPetCustomFields(petCustomFields.filter((_, i) => i !== index))}
+                              variant="outline"
+                              onClick={() => setPetContacts([...petContacts, {name: "", phone: "", email: "", relation: ""}])}
                             >
-                              <X className="h-4 w-4" />
+                              <Plus className="h-4 w-4 mr-1" />
+                              Add
                             </Button>
                           </div>
+
+                          {petContacts.slice(1).map((contact, index) => (
+                            <div key={index + 1} className="space-y-2 mb-4 p-3 border rounded-lg relative bg-white dark:bg-gray-900">
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="ghost"
+                                className="absolute top-2 right-2"
+                                onClick={() => setPetContacts(petContacts.filter((_, i) => i !== index + 1))}
+                              >
+                                <X className="h-4 w-4" />
+                              </Button>
+                              <div className="grid grid-cols-2 gap-2">
+                                <Input
+                                  placeholder="Name"
+                                  value={contact.name}
+                                  onChange={(e) => {
+                                    const newContacts = [...petContacts]
+                                    newContacts[index + 1].name = e.target.value
+                                    setPetContacts(newContacts)
+                                  }}
+                                />
+                                <Input
+                                  placeholder="Phone"
+                                  type="tel"
+                                  value={contact.phone}
+                                  onChange={(e) => {
+                                    const newContacts = [...petContacts]
+                                    newContacts[index + 1].phone = e.target.value
+                                    setPetContacts(newContacts)
+                                  }}
+                                />
+                              </div>
+                            </div>
+                          ))}
                         </div>
-                      ))}
-                    </div>
+
+                        <div className="border-t pt-4">
+                          <div className="flex items-center justify-between mb-3">
+                            <Label>More Custom Fields</Label>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              onClick={() => setPetCustomFields([...petCustomFields, {label: "", value: ""}])}
+                            >
+                              <Plus className="h-4 w-4 mr-1" />
+                              Add
+                            </Button>
+                          </div>
+
+                          {petCustomFields.slice(1).map((field, index) => (
+                            <div key={index + 1} className="grid grid-cols-2 gap-2 mb-3">
+                              <Input
+                                placeholder="Label"
+                                value={field.label}
+                                onChange={(e) => {
+                                  const newFields = [...petCustomFields]
+                                  newFields[index + 1].label = e.target.value
+                                  setPetCustomFields(newFields)
+                                }}
+                              />
+                              <div className="flex gap-2">
+                                <Input
+                                  placeholder="Value"
+                                  value={field.value}
+                                  onChange={(e) => {
+                                    const newFields = [...petCustomFields]
+                                    newFields[index + 1].value = e.target.value
+                                    setPetCustomFields(newFields)
+                                  }}
+                                />
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => setPetCustomFields(petCustomFields.filter((_, i) => i !== index + 1))}
+                                >
+                                  <X className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </TabsContent>
 
@@ -1039,6 +1187,75 @@ export default function QRCodeGenerator() {
                       : 'Use your app\'s package name (e.g., com.example.myapp)'}
                   </p>
                 </TabsContent>
+
+                <TabsContent value="social" className="space-y-4">
+                  <div>
+                    <Label htmlFor="social-platform">Platform</Label>
+                    <Select
+                      id="social-platform"
+                      value={socialPlatform}
+                      onChange={(e) => setSocialPlatform(e.target.value)}
+                    >
+                      <option value="twitter">Twitter / X</option>
+                      <option value="instagram">Instagram</option>
+                      <option value="facebook">Facebook</option>
+                      <option value="linkedin">LinkedIn</option>
+                      <option value="tiktok">TikTok</option>
+                      <option value="youtube">YouTube</option>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label htmlFor="social-username">Username / Profile *</Label>
+                    <Input
+                      id="social-username"
+                      placeholder="@username or profile URL"
+                      value={socialUsername}
+                      onChange={(e) => setSocialUsername(e.target.value)}
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Enter your username (with or without @) or full profile URL
+                  </p>
+                </TabsContent>
+
+                <TabsContent value="location" className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="location-lat">Latitude *</Label>
+                      <Input
+                        id="location-lat"
+                        type="number"
+                        step="any"
+                        placeholder="37.7749"
+                        value={locationLat}
+                        onChange={(e) => setLocationLat(e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="location-lng">Longitude *</Label>
+                      <Input
+                        id="location-lng"
+                        type="number"
+                        step="any"
+                        placeholder="-122.4194"
+                        value={locationLng}
+                        onChange={(e) => setLocationLng(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <Label htmlFor="location-label">Location Name (optional)</Label>
+                    <Input
+                      id="location-label"
+                      placeholder="San Francisco, CA"
+                      value={locationLabel}
+                      onChange={(e) => setLocationLabel(e.target.value)}
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Creates a Google Maps link. Find coordinates by right-clicking on Google Maps.
+                  </p>
+                </TabsContent>
               </Tabs>
             </CardContent>
           </Card>
@@ -1046,67 +1263,13 @@ export default function QRCodeGenerator() {
           <Card>
             <CardHeader>
               <CardTitle>Customization</CardTitle>
-              <CardDescription>Customize your QR code appearance</CardDescription>
+              <CardDescription>Basic QR code appearance</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              <div>
-                <div className="flex items-center gap-2 mb-2">
-                  <Label htmlFor="error-level">Error Correction Level</Label>
-                  <div className="group relative">
-                    <Info className="h-4 w-4 text-muted-foreground cursor-help" />
-                    <div className="absolute left-0 bottom-full mb-2 hidden group-hover:block w-80 p-3 bg-popover text-popover-foreground border rounded-lg shadow-lg z-10">
-                      <p className="text-sm font-semibold mb-2">Error Correction Levels</p>
-                      <p className="text-xs mb-2">QR codes can still work even if partially damaged or dirty:</p>
-                      <ul className="text-xs space-y-1">
-                        <li><strong>Low (7%):</strong> Maximum data capacity, best for clean surfaces</li>
-                        <li><strong>Medium (15%):</strong> Good balance - recommended default</li>
-                        <li><strong>Quartile (25%):</strong> Better damage resistance, good for outdoor use</li>
-                        <li><strong>High (30%):</strong> Best damage resistance, ideal when adding logos</li>
-                      </ul>
-                      <p className="text-xs mt-2 text-muted-foreground">Higher correction = less data capacity but more damage resistance</p>
-                    </div>
-                  </div>
-                </div>
-                <Select
-                  id="error-level"
-                  value={errorLevel}
-                  onChange={(e) => setErrorLevel(e.target.value as ErrorCorrectionLevel)}
-                >
-                  <option value="L">Low (7%) - Maximum Data</option>
-                  <option value="M">Medium (15%) - Recommended</option>
-                  <option value="Q">Quartile (25%) - Outdoor Use</option>
-                  <option value="H">High (30%) - Best with Logos</option>
-                </Select>
-              </div>
-
-              <div>
-                <Label htmlFor="qr-style">QR Code Style</Label>
-                <Select
-                  id="qr-style"
-                  value={qrStyle}
-                  onChange={(e) => setQrStyle(e.target.value as QRStyle)}
-                >
-                  <option value="squares">Squares (Classic)</option>
-                  <option value="dots">Dots (Rounded)</option>
-                  <option value="rounded">Rounded Squares</option>
-                </Select>
-              </div>
-
-              <div>
-                <Label htmlFor="size">Size: {size}px</Label>
-                <Slider
-                  id="size"
-                  value={size}
-                  onValueChange={setSize}
-                  min={200}
-                  max={1000}
-                  step={50}
-                />
-              </div>
-
+              {/* Basic Options - Always Visible */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="fg-color">Foreground Color</Label>
+                  <Label htmlFor="fg-color">QR Code Color</Label>
                   <div className="flex gap-2">
                     <Input
                       id="fg-color"
@@ -1144,78 +1307,297 @@ export default function QRCodeGenerator() {
               </div>
 
               <div>
-                <Label htmlFor="margin">Margin: {margin}</Label>
+                <Label htmlFor="size">Size: {size}px</Label>
                 <Slider
-                  id="margin"
-                  value={margin}
-                  onValueChange={setMargin}
-                  min={0}
-                  max={10}
-                  step={1}
+                  id="size"
+                  value={size}
+                  onValueChange={setSize}
+                  min={200}
+                  max={1000}
+                  step={50}
                 />
               </div>
 
-              <div className="border-t pt-4 space-y-3">
-                <Label>Logo (Optional - Add Last)</Label>
-                <div className="space-y-2">
-                  <div>
-                    <Label htmlFor="logo-file" className="text-sm font-normal text-muted-foreground">
-                      Upload Image
-                    </Label>
-                    <Input
-                      id="logo-file"
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0]
-                        if (file) {
-                          // Higher quality for logo since it's just overlaid, not encoded in QR data
-                          compressImage(file, 300, 300, 0.9)
-                            .then((compressed) => {
-                              setLogoUrl(compressed)
-                            })
-                            .catch((error) => {
-                              console.error('Error compressing image:', error)
-                              alert('Failed to compress image. Please try a different image.')
-                            })
-                        }
-                      }}
-                      className="cursor-pointer"
-                    />
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="flex-1 border-t" />
-                    <span className="text-xs text-muted-foreground">OR</span>
-                    <div className="flex-1 border-t" />
-                  </div>
-                  <div>
-                    <Label htmlFor="logo-url" className="text-sm font-normal text-muted-foreground">
-                      Image URL
-                    </Label>
-                    <Input
-                      id="logo-url"
-                      type="url"
-                      placeholder="https://example.com/logo.png"
-                      value={logoUrl}
-                      onChange={(e) => setLogoUrl(e.target.value)}
-                    />
-                  </div>
-                  {logoUrl && (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setLogoUrl("")}
-                      className="w-full"
-                    >
-                      Clear Logo
-                    </Button>
-                  )}
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Upload last - Logo appears in center (works best with high error correction)
-                </p>
+              {/* Advanced Settings Toggle */}
+              <div className="border-t pt-4">
+                <Button
+                  type="button"
+                  variant={showCustomizationAdvanced ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setShowCustomizationAdvanced(!showCustomizationAdvanced)}
+                  className="w-full"
+                >
+                  {showCustomizationAdvanced ? "Hide" : "Show"} Advanced Settings
+                </Button>
+                {!showCustomizationAdvanced && (
+                  <p className="text-xs text-muted-foreground mt-2 text-center">
+                    Colors and size are usually all you need
+                  </p>
+                )}
               </div>
+
+              {/* Advanced Options */}
+              {showCustomizationAdvanced && (
+                <div className="space-y-6 border-2 border-blue-200 dark:border-blue-800 rounded-lg p-4 bg-blue-50/50 dark:bg-blue-950/20">
+                  <div>
+                    <div className="flex items-center gap-2 mb-2">
+                      <Label htmlFor="error-level">Error Correction Level</Label>
+                      <div className="group relative">
+                        <Info className="h-4 w-4 text-muted-foreground cursor-help" />
+                        <div className="absolute left-0 bottom-full mb-2 hidden group-hover:block w-80 p-3 bg-popover text-popover-foreground border rounded-lg shadow-lg z-10">
+                          <p className="text-sm font-semibold mb-2">Error Correction Levels</p>
+                          <p className="text-xs mb-2">QR codes can still work even if partially damaged or dirty:</p>
+                          <ul className="text-xs space-y-1">
+                            <li><strong>Low (7%):</strong> Maximum data capacity, best for clean surfaces</li>
+                            <li><strong>Medium (15%):</strong> Good balance - recommended default</li>
+                            <li><strong>Quartile (25%):</strong> Better damage resistance, good for outdoor use</li>
+                            <li><strong>High (30%):</strong> Best damage resistance, ideal when adding logos</li>
+                          </ul>
+                          <p className="text-xs mt-2 text-muted-foreground">Higher correction = less data capacity but more damage resistance</p>
+                        </div>
+                      </div>
+                    </div>
+                    <Select
+                      id="error-level"
+                      value={errorLevel}
+                      onChange={(e) => setErrorLevel(e.target.value as ErrorCorrectionLevel)}
+                    >
+                      <option value="L">Low (7%) - Maximum Data</option>
+                      <option value="M">Medium (15%) - Recommended</option>
+                      <option value="Q">Quartile (25%) - Outdoor Use</option>
+                      <option value="H">High (30%) - Best with Logos</option>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="qr-style">QR Code Style</Label>
+                    <Select
+                      id="qr-style"
+                      value={qrStyle}
+                      onChange={(e) => setQrStyle(e.target.value as QRStyle)}
+                    >
+                      <option value="squares">Squares (Classic)</option>
+                      <option value="dots">Dots (Rounded)</option>
+                      <option value="rounded">Rounded Squares</option>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="finder-pattern">Corner Pattern</Label>
+                    <Select
+                      id="finder-pattern"
+                      value={finderPattern}
+                      onChange={(e) => setFinderPattern(e.target.value as FinderPattern)}
+                    >
+                      <option value="square">Square</option>
+                      <option value="rounded">Rounded</option>
+                      <option value="dots">Dots</option>
+                      <option value="extra-rounded">Extra Rounded</option>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <Label>Size Presets</Label>
+                    </div>
+                    <div className="grid grid-cols-4 gap-2">
+                      <Button type="button" variant="outline" size="sm" onClick={() => applySizePreset('business')}>
+                        Business
+                      </Button>
+                      <Button type="button" variant="outline" size="sm" onClick={() => applySizePreset('flyer')}>
+                        Flyer
+                      </Button>
+                      <Button type="button" variant="outline" size="sm" onClick={() => applySizePreset('poster')}>
+                        Poster
+                      </Button>
+                      <Button type="button" variant="outline" size="sm" onClick={() => applySizePreset('tshirt')}>
+                        T-Shirt
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="margin">Margin: {margin}</Label>
+                    <Slider
+                      id="margin"
+                      value={margin}
+                      onValueChange={setMargin}
+                      min={0}
+                      max={10}
+                      step={1}
+                    />
+                  </div>
+
+                  <div className="border-t pt-4 space-y-3">
+                    <div className="flex items-center gap-2">
+                      <input
+                        id="transparent-bg"
+                        type="checkbox"
+                        checked={transparentBg}
+                        onChange={(e) => setTransparentBg(e.target.checked)}
+                        className="cursor-pointer"
+                      />
+                      <Label htmlFor="transparent-bg" className="cursor-pointer">Transparent Background</Label>
+                    </div>
+                  </div>
+
+                  <div className="border-t pt-4 space-y-3">
+                    <div className="flex items-center gap-2">
+                      <input
+                        id="gradient-enabled"
+                        type="checkbox"
+                        checked={gradientEnabled}
+                        onChange={(e) => setGradientEnabled(e.target.checked)}
+                        className="cursor-pointer"
+                      />
+                      <Label htmlFor="gradient-enabled" className="cursor-pointer">Enable Gradient</Label>
+                    </div>
+                    {gradientEnabled && (
+                      <div className="space-y-3 pl-6 border-l-2">
+                        <div>
+                          <Label htmlFor="gradient-type">Gradient Type</Label>
+                          <Select
+                            id="gradient-type"
+                            value={gradientType}
+                            onChange={(e) => setGradientType(e.target.value as 'linear' | 'radial')}
+                          >
+                            <option value="linear">Linear</option>
+                            <option value="radial">Radial</option>
+                          </Select>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <Label htmlFor="gradient-start">Start Color</Label>
+                            <Input
+                              id="gradient-start"
+                              type="color"
+                              value={gradientColorStart}
+                              onChange={(e) => setGradientColorStart(e.target.value)}
+                              className="h-10"
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="gradient-end">End Color</Label>
+                            <Input
+                              id="gradient-end"
+                              type="color"
+                              value={gradientColorEnd}
+                              onChange={(e) => setGradientColorEnd(e.target.value)}
+                              className="h-10"
+                            />
+                          </div>
+                        </div>
+                        {gradientType === 'linear' && (
+                          <div>
+                            <Label htmlFor="gradient-rotation">Rotation: {gradientRotation}°</Label>
+                            <Slider
+                              id="gradient-rotation"
+                              value={gradientRotation}
+                              onValueChange={setGradientRotation}
+                              min={0}
+                              max={360}
+                              step={15}
+                            />
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="border-t pt-4 space-y-3">
+                    <Label>Frame & Text</Label>
+                    <div>
+                      <Label htmlFor="frame-style">Frame Style</Label>
+                      <Select
+                        id="frame-style"
+                        value={frameStyle}
+                        onChange={(e) => setFrameStyle(e.target.value as FrameStyle)}
+                      >
+                        <option value="none">None</option>
+                        <option value="simple">Simple</option>
+                        <option value="rounded">Rounded</option>
+                        <option value="banner">Banner</option>
+                      </Select>
+                    </div>
+                    {frameStyle !== 'none' && (
+                      <div>
+                        <Label htmlFor="frame-text">Frame Text</Label>
+                        <Input
+                          id="frame-text"
+                          placeholder="Scan Me!"
+                          value={frameText}
+                          onChange={(e) => setFrameText(e.target.value)}
+                          maxLength={30}
+                        />
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="border-t pt-4 space-y-3">
+                    <Label>{qrType === 'pet' ? 'Add Image (Optional - Add Last)' : 'Logo (Optional - Add Last)'}</Label>
+                    <div className="space-y-2">
+                      <div>
+                        <Label htmlFor="logo-file" className="text-sm font-normal text-muted-foreground">
+                          Upload Image
+                        </Label>
+                        <Input
+                          id="logo-file"
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0]
+                            if (file) {
+                              // Higher quality for logo since it's just overlaid, not encoded in QR data
+                              compressImage(file, 300, 300, 0.9)
+                                .then((compressed) => {
+                                  setLogoUrl(compressed)
+                                })
+                                .catch((error) => {
+                                  console.error('Error compressing image:', error)
+                                  alert('Failed to compress image. Please try a different image.')
+                                })
+                            }
+                          }}
+                          className="cursor-pointer"
+                        />
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="flex-1 border-t" />
+                        <span className="text-xs text-muted-foreground">OR</span>
+                        <div className="flex-1 border-t" />
+                      </div>
+                      <div>
+                        <Label htmlFor="logo-url" className="text-sm font-normal text-muted-foreground">
+                          Image URL
+                        </Label>
+                        <Input
+                          id="logo-url"
+                          type="url"
+                          placeholder="https://example.com/logo.png"
+                          value={logoUrl}
+                          onChange={(e) => setLogoUrl(e.target.value)}
+                        />
+                      </div>
+                      {logoUrl && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setLogoUrl("")}
+                          className="w-full"
+                        >
+                          {qrType === 'pet' ? 'Clear Image' : 'Clear Logo'}
+                        </Button>
+                      )}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {qrType === 'pet'
+                        ? 'Upload last - Image appears in center of QR code'
+                        : 'Upload last - Logo appears in center (works best with high error correction)'}
+                    </p>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
@@ -1349,14 +1731,20 @@ export default function QRCodeGenerator() {
                 <strong>Features:</strong>
               </p>
               <ul className="list-disc list-inside space-y-1 ml-2">
-                <li>11 QR code types (URL, Text, Pet ID, WiFi, vCard, Email, SMS, Phone, Calendar Events, Cryptocurrency, App Store)</li>
-                <li>3 visual styles (Squares, Dots, Rounded)</li>
+                <li>13 QR code types (URL, Text, Social Media, Location/Maps, Pet ID, WiFi, vCard, Email, SMS, Phone, Calendar Events, Cryptocurrency, App Store)</li>
+                <li>3 QR visual styles (Squares, Dots, Rounded)</li>
+                <li>4 custom corner patterns (Square, Rounded, Dots, Extra Rounded)</li>
+                <li>Gradient support (Linear & Radial)</li>
+                <li>Frame styles with custom text</li>
+                <li>Transparent background option</li>
+                <li>Size presets (Business Card, Flyer, Poster, T-Shirt)</li>
                 <li>Customizable colors, sizes, and margins</li>
-                <li>Adjustable error correction levels with tooltips</li>
+                <li>Adjustable error correction levels</li>
                 <li>Logo embedding support</li>
                 <li>Download as PNG, SVG, or PDF</li>
                 <li>Print-optimized view</li>
                 <li>Local history (last 10 QR codes)</li>
+                <li>Quick example templates</li>
                 <li>100% client-side - no server uploads</li>
                 <li>No tracking, no ads, completely free</li>
               </ul>
