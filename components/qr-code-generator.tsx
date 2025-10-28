@@ -126,12 +126,13 @@ export default function QRCodeGenerator() {
     setHistory(getHistory())
   }, [])
 
-  // Auto-switch to Low error correction for Pet IDs (they have more data)
+  // Auto-switch to Low error correction when switching TO Pet ID (they have more data)
+  // But allow user to change it afterwards
   useEffect(() => {
-    if (qrType === 'pet' && errorLevel !== 'L') {
+    if (qrType === 'pet') {
       setErrorLevel('L')
     }
-  }, [qrType, errorLevel])
+  }, [qrType])
 
   useEffect(() => {
     let newContent = ""
