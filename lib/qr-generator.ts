@@ -341,15 +341,27 @@ export function generateWiFiString(
   return `WIFI:T:${encryption};S:${ssid};P:${password};;`;
 }
 
-export function generateVCardString(data: {
+export interface VCardData {
   firstName: string;
   lastName: string;
   organization?: string;
+  jobTitle?: string;
   phone?: string;
   email?: string;
   website?: string;
   address?: string;
-}): string {
+  city?: string;
+  state?: string;
+  zip?: string;
+  country?: string;
+  birthday?: string;
+  note?: string;
+  twitter?: string;
+  linkedin?: string;
+  instagram?: string;
+}
+
+export function generateVCardString(data: VCardData): string {
   const lines = [
     'BEGIN:VCARD',
     'VERSION:3.0',
@@ -358,10 +370,28 @@ export function generateVCardString(data: {
   ];
 
   if (data.organization) lines.push(`ORG:${data.organization}`);
+  if (data.jobTitle) lines.push(`TITLE:${data.jobTitle}`);
   if (data.phone) lines.push(`TEL:${data.phone}`);
   if (data.email) lines.push(`EMAIL:${data.email}`);
   if (data.website) lines.push(`URL:${data.website}`);
-  if (data.address) lines.push(`ADR:;;${data.address};;;;`);
+
+  // Enhanced address formatting
+  if (data.address || data.city || data.state || data.zip || data.country) {
+    const addr = `ADR:;;${data.address || ''};${data.city || ''};${data.state || ''};${data.zip || ''};${data.country || ''}`;
+    lines.push(addr);
+  }
+
+  if (data.birthday) {
+    // Birthday format: BDAY:YYYY-MM-DD
+    lines.push(`BDAY:${data.birthday}`);
+  }
+
+  if (data.note) lines.push(`NOTE:${data.note}`);
+
+  // Social media links
+  if (data.twitter) lines.push(`X-SOCIALPROFILE;TYPE=twitter:https://twitter.com/${data.twitter.replace('@', '')}`);
+  if (data.linkedin) lines.push(`X-SOCIALPROFILE;TYPE=linkedin:${data.linkedin.startsWith('http') ? data.linkedin : 'https://linkedin.com/in/' + data.linkedin}`);
+  if (data.instagram) lines.push(`X-SOCIALPROFILE;TYPE=instagram:https://instagram.com/${data.instagram.replace('@', '')}`);
 
   lines.push('END:VCARD');
   return lines.join('\n');
@@ -480,6 +510,72 @@ export function generateLocationString(latitude: string, longitude: string, labe
     result += `?q=${latitude},${longitude}(${encodeURIComponent(label)})`;
   }
   return result;
+}
+
+export function generateWhatsAppString(phone: string, message?: string): string {
+  // WhatsApp web format: https://wa.me/phonenumber?text=message
+  const cleanPhone = phone.replace(/[^0-9+]/g, '');
+  let result = `https://wa.me/${cleanPhone}`;
+  if (message) {
+    result += `?text=${encodeURIComponent(message)}`;
+  }
+  return result;
+}
+
+export function generateMeetingString(platform: 'zoom' | 'teams' | 'meet', meetingUrl: string): string {
+  // Direct meeting URL - just return the URL
+  // Optionally format if it's just an ID
+  if (platform === 'zoom' && !meetingUrl.startsWith('http')) {
+    return `https://zoom.us/j/${meetingUrl.replace(/\s/g, '')}`;
+  } else if (platform === 'teams' && !meetingUrl.startsWith('http')) {
+    return meetingUrl; // Teams IDs need full URL
+  } else if (platform === 'meet' && !meetingUrl.startsWith('http')) {
+    return `https://meet.google.com/${meetingUrl}`;
+  }
+  return meetingUrl;
+}
+
+export function generatePayPalString(email: string, amount?: string, currency: string = 'USD', note?: string): string {
+  // PayPal.me format
+  const cleanEmail = email.replace('@', '').replace(/\./g, '');
+  let result = `https://paypal.me/${email}`;
+
+  // If it's not a paypal.me username, use standard paypal link
+  if (email.includes('@')) {
+    result = `https://www.paypal.com/paypalme/${cleanEmail}`;
+  }
+
+  if (amount) {
+    result += `/${amount}${currency}`;
+  }
+
+  return result;
+}
+
+export function generateMediaString(platform: 'spotify' | 'youtube' | 'soundcloud' | 'applemusic', url: string): string {
+  // Parse and validate media URLs
+  if (url.startsWith('http')) {
+    return url;
+  }
+
+  // Handle short codes/IDs
+  switch (platform) {
+    case 'spotify':
+      // Spotify URI or ID
+      if (url.includes('spotify:')) {
+        return url.replace('spotify:', 'https://open.spotify.com/').replace(/:/g, '/');
+      }
+      return `https://open.spotify.com/track/${url}`;
+    case 'youtube':
+      // YouTube video ID
+      return `https://youtube.com/watch?v=${url}`;
+    case 'soundcloud':
+      return `https://soundcloud.com/${url}`;
+    case 'applemusic':
+      return url.startsWith('http') ? url : `https://music.apple.com/${url}`;
+    default:
+      return url;
+  }
 }
 
 export function generatePDF(dataUrl: string, filename: string = 'qrcode.pdf'): void {

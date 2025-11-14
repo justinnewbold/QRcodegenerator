@@ -20,6 +20,10 @@ import {
   generateAppStoreString,
   generateSocialMediaString,
   generateLocationString,
+  generateWhatsAppString,
+  generateMeetingString,
+  generatePayPalString,
+  generateMediaString,
   generatePDF,
   type ErrorCorrectionLevel,
   type QRCodeOptions,
@@ -27,7 +31,9 @@ import {
   type FinderPattern,
   type FrameStyle,
   type GradientConfig,
+  type VCardData,
 } from "@/lib/qr-generator"
+import { getAllPalettes, getCategories, saveCustomPalette, type ColorPalette } from "@/lib/color-palettes"
 import { compressImage, estimateQRDataSize, getQRCodeCapacity } from "@/lib/image-utils"
 import { saveToHistory, getHistory, clearHistory, deleteHistoryItem, type QRHistoryItem } from "@/lib/qr-history"
 import { Download, QrCode, Wifi, Mail, Phone, MessageSquare, User, Link2, Heart, Plus, X, AlertTriangle, Info, Calendar, Coins, Smartphone, History, FileText, Printer, Trash2, MapPin, Twitter, Instagram, Linkedin, Facebook, Music } from "lucide-react"
@@ -110,6 +116,40 @@ export default function QRCodeGenerator() {
   const [locationLng, setLocationLng] = useState<string>("")
   const [locationLabel, setLocationLabel] = useState<string>("")
 
+  // WhatsApp fields
+  const [whatsappPhone, setWhatsappPhone] = useState<string>("")
+  const [whatsappMessage, setWhatsappMessage] = useState<string>("")
+
+  // Meeting fields
+  const [meetingPlatform, setMeetingPlatform] = useState<'zoom' | 'teams' | 'meet'>('zoom')
+  const [meetingUrl, setMeetingUrl] = useState<string>("")
+
+  // PayPal fields
+  const [paypalEmail, setPaypalEmail] = useState<string>("")
+  const [paypalAmount, setPaypalAmount] = useState<string>("")
+  const [paypalCurrency, setPaypalCurrency] = useState<string>("USD")
+
+  // Media fields
+  const [mediaPlatform, setMediaPlatform] = useState<'spotify' | 'youtube' | 'soundcloud' | 'applemusic'>('spotify')
+  const [mediaUrl, setMediaUrl] = useState<string>("")
+
+  // Enhanced vCard fields
+  const [vcardJobTitle, setVcardJobTitle] = useState<string>("")
+  const [vcardCity, setVcardCity] = useState<string>("")
+  const [vcardState, setVcardState] = useState<string>("")
+  const [vcardZip, setVcardZip] = useState<string>("")
+  const [vcardCountry, setVcardCountry] = useState<string>("")
+  const [vcardAddress, setVcardAddress] = useState<string>("")
+  const [vcardBirthday, setVcardBirthday] = useState<string>("")
+  const [vcardNote, setVcardNote] = useState<string>("")
+  const [vcardTwitter, setVcardTwitter] = useState<string>("")
+  const [vcardLinkedin, setVcardLinkedin] = useState<string>("")
+  const [vcardInstagram, setVcardInstagram] = useState<string>("")
+
+  // Color palettes
+  const [showPaletteSelector, setShowPaletteSelector] = useState<boolean>(false)
+  const [allPalettes, setAllPalettes] = useState<ColorPalette[]>([])
+
   // Advanced styling
   const [finderPattern, setFinderPattern] = useState<FinderPattern>("square")
   const [frameStyle, setFrameStyle] = useState<FrameStyle>("none")
@@ -127,9 +167,10 @@ export default function QRCodeGenerator() {
   // Customization advanced toggle
   const [showCustomizationAdvanced, setShowCustomizationAdvanced] = useState<boolean>(false)
 
-  // Load history on mount
+  // Load history and palettes on mount
   useEffect(() => {
     setHistory(getHistory())
+    setAllPalettes(getAllPalettes())
   }, [])
 
   useEffect(() => {
@@ -146,14 +187,27 @@ export default function QRCodeGenerator() {
         break
       case "vcard":
         if (vcardFirstName || vcardLastName) {
-          newContent = generateVCardString({
+          const vcardData: VCardData = {
             firstName: vcardFirstName,
             lastName: vcardLastName,
             phone: vcardPhone,
             email: vcardEmail,
             organization: vcardOrg,
             website: vcardWebsite,
-          })
+          }
+          // Add enhanced fields if they exist
+          if (vcardJobTitle) vcardData.jobTitle = vcardJobTitle
+          if (vcardAddress) vcardData.address = vcardAddress
+          if (vcardCity) vcardData.city = vcardCity
+          if (vcardState) vcardData.state = vcardState
+          if (vcardZip) vcardData.zip = vcardZip
+          if (vcardCountry) vcardData.country = vcardCountry
+          if (vcardBirthday) vcardData.birthday = vcardBirthday
+          if (vcardNote) vcardData.note = vcardNote
+          if (vcardTwitter) vcardData.twitter = vcardTwitter
+          if (vcardLinkedin) vcardData.linkedin = vcardLinkedin
+          if (vcardInstagram) vcardData.instagram = vcardInstagram
+          newContent = generateVCardString(vcardData)
         }
         break
       case "email":
@@ -239,16 +293,39 @@ export default function QRCodeGenerator() {
           newContent = generateLocationString(locationLat, locationLng, locationLabel)
         }
         break
+      case "whatsapp":
+        if (whatsappPhone) {
+          newContent = generateWhatsAppString(whatsappPhone, whatsappMessage)
+        }
+        break
+      case "meeting":
+        if (meetingUrl) {
+          newContent = generateMeetingString(meetingPlatform, meetingUrl)
+        }
+        break
+      case "paypal":
+        if (paypalEmail) {
+          newContent = generatePayPalString(paypalEmail, paypalAmount, paypalCurrency)
+        }
+        break
+      case "media":
+        if (mediaUrl) {
+          newContent = generateMediaString(mediaPlatform, mediaUrl)
+        }
+        break
     }
 
     setContent(newContent)
   }, [qrType, url, wifiSsid, wifiPassword, wifiEncryption, vcardFirstName, vcardLastName,
-      vcardPhone, vcardEmail, vcardOrg, vcardWebsite, emailAddress, emailSubject, emailBody,
-      smsPhone, smsMessage, phoneNumber, plainText, petName, petSpecies, petBreed, petColor,
-      petAge, petMicrochip, petMedical, petContacts, petCustomFields, petReward,
-      calendarTitle, calendarLocation, calendarStart, calendarEnd, calendarDescription,
-      cryptoAddress, cryptoAmount, cryptoLabel, appPlatform, appId,
-      socialPlatform, socialUsername, locationLat, locationLng, locationLabel])
+      vcardPhone, vcardEmail, vcardOrg, vcardWebsite, vcardJobTitle, vcardAddress, vcardCity,
+      vcardState, vcardZip, vcardCountry, vcardBirthday, vcardNote, vcardTwitter, vcardLinkedin,
+      vcardInstagram, emailAddress, emailSubject, emailBody, smsPhone, smsMessage, phoneNumber,
+      plainText, petName, petSpecies, petBreed, petColor, petAge, petMicrochip, petMedical,
+      petContacts, petCustomFields, petReward, calendarTitle, calendarLocation, calendarStart,
+      calendarEnd, calendarDescription, cryptoAddress, cryptoAmount, cryptoLabel, appPlatform,
+      appId, socialPlatform, socialUsername, locationLat, locationLng, locationLabel,
+      whatsappPhone, whatsappMessage, meetingPlatform, meetingUrl, paypalEmail, paypalAmount,
+      paypalCurrency, mediaPlatform, mediaUrl])
 
   const generateQR = useCallback(async () => {
     if (!content) {
@@ -502,6 +579,25 @@ export default function QRCodeGenerator() {
         setLocationLng('-122.4194')
         setLocationLabel('San Francisco, CA')
         break
+      case 'whatsapp':
+        setWhatsappPhone('+1234567890')
+        setWhatsappMessage('Hello! I found your QR code.')
+        break
+      case 'meeting':
+        setMeetingUrl('https://zoom.us/j/1234567890')
+        break
+      case 'paypal':
+        setPaypalEmail('yourusername')
+        setPaypalAmount('10')
+        setPaypalCurrency('USD')
+        break
+      case 'media':
+        if (mediaPlatform === 'spotify') {
+          setMediaUrl('https://open.spotify.com/track/3n3Ppam7vgaVa1iaRUc9Lp')
+        } else if (mediaPlatform === 'youtube') {
+          setMediaUrl('https://youtube.com/watch?v=dQw4w9WgXcQ')
+        }
+        break
     }
   }
 
@@ -550,7 +646,7 @@ export default function QRCodeGenerator() {
             </CardHeader>
             <CardContent>
               <Tabs value={qrType} onValueChange={setQrType}>
-                <TabsList className="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-13 gap-2 h-auto">
+                <TabsList className="grid grid-cols-4 md:grid-cols-6 lg:grid-cols-17 gap-2 h-auto">
                   <TabsTrigger value="url" className="flex items-center gap-1">
                     <Link2 className="h-4 w-4" />
                     <span className="hidden sm:inline">URL</span>
@@ -602,6 +698,22 @@ export default function QRCodeGenerator() {
                   <TabsTrigger value="app" className="flex items-center gap-1">
                     <Smartphone className="h-4 w-4" />
                     <span className="hidden sm:inline">App</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="whatsapp" className="flex items-center gap-1">
+                    <MessageSquare className="h-4 w-4" />
+                    <span className="hidden sm:inline">WhatsApp</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="meeting" className="flex items-center gap-1">
+                    <Phone className="h-4 w-4" />
+                    <span className="hidden sm:inline">Meeting</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="paypal" className="flex items-center gap-1">
+                    <Coins className="h-4 w-4" />
+                    <span className="hidden sm:inline">PayPal</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="media" className="flex items-center gap-1">
+                    <Music className="h-4 w-4" />
+                    <span className="hidden sm:inline">Media</span>
                   </TabsTrigger>
                 </TabsList>
 
@@ -723,6 +835,121 @@ export default function QRCodeGenerator() {
                       value={vcardWebsite}
                       onChange={(e) => setVcardWebsite(e.target.value)}
                     />
+                  </div>
+
+                  {/* Enhanced vCard Fields */}
+                  <div className="border-t pt-4">
+                    <p className="text-sm font-semibold mb-3">Additional Information (Optional)</p>
+                    <div className="space-y-3">
+                      <div>
+                        <Label htmlFor="vcard-jobtitle">Job Title</Label>
+                        <Input
+                          id="vcard-jobtitle"
+                          placeholder="Software Engineer"
+                          value={vcardJobTitle}
+                          onChange={(e) => setVcardJobTitle(e.target.value)}
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="vcard-address">Street Address</Label>
+                        <Input
+                          id="vcard-address"
+                          placeholder="123 Main St"
+                          value={vcardAddress}
+                          onChange={(e) => setVcardAddress(e.target.value)}
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <Label htmlFor="vcard-city">City</Label>
+                          <Input
+                            id="vcard-city"
+                            placeholder="San Francisco"
+                            value={vcardCity}
+                            onChange={(e) => setVcardCity(e.target.value)}
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="vcard-state">State</Label>
+                          <Input
+                            id="vcard-state"
+                            placeholder="CA"
+                            value={vcardState}
+                            onChange={(e) => setVcardState(e.target.value)}
+                          />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <Label htmlFor="vcard-zip">ZIP/Postal Code</Label>
+                          <Input
+                            id="vcard-zip"
+                            placeholder="94105"
+                            value={vcardZip}
+                            onChange={(e) => setVcardZip(e.target.value)}
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="vcard-country">Country</Label>
+                          <Input
+                            id="vcard-country"
+                            placeholder="USA"
+                            value={vcardCountry}
+                            onChange={(e) => setVcardCountry(e.target.value)}
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <Label htmlFor="vcard-birthday">Birthday</Label>
+                        <Input
+                          id="vcard-birthday"
+                          type="date"
+                          value={vcardBirthday}
+                          onChange={(e) => setVcardBirthday(e.target.value)}
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="vcard-note">Note</Label>
+                        <Input
+                          id="vcard-note"
+                          placeholder="Additional notes..."
+                          value={vcardNote}
+                          onChange={(e) => setVcardNote(e.target.value)}
+                        />
+                      </div>
+                      <div className="border-t pt-3 mt-3">
+                        <p className="text-sm font-semibold mb-3">Social Media</p>
+                        <div className="space-y-2">
+                          <div>
+                            <Label htmlFor="vcard-twitter">Twitter/X Username</Label>
+                            <Input
+                              id="vcard-twitter"
+                              placeholder="@username"
+                              value={vcardTwitter}
+                              onChange={(e) => setVcardTwitter(e.target.value)}
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="vcard-linkedin">LinkedIn Profile</Label>
+                            <Input
+                              id="vcard-linkedin"
+                              placeholder="linkedin.com/in/username"
+                              value={vcardLinkedin}
+                              onChange={(e) => setVcardLinkedin(e.target.value)}
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="vcard-instagram">Instagram Username</Label>
+                            <Input
+                              id="vcard-instagram"
+                              placeholder="@username"
+                              value={vcardInstagram}
+                              onChange={(e) => setVcardInstagram(e.target.value)}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </TabsContent>
 
@@ -1252,6 +1479,137 @@ export default function QRCodeGenerator() {
                     Creates a Google Maps link. Find coordinates by right-clicking on Google Maps.
                   </p>
                 </TabsContent>
+
+                <TabsContent value="whatsapp" className="space-y-4">
+                  <div>
+                    <Label htmlFor="whatsapp-phone">Phone Number *</Label>
+                    <Input
+                      id="whatsapp-phone"
+                      type="tel"
+                      placeholder="+1234567890"
+                      value={whatsappPhone}
+                      onChange={(e) => setWhatsappPhone(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="whatsapp-message">Pre-filled Message (optional)</Label>
+                    <Input
+                      id="whatsapp-message"
+                      placeholder="Hi, I'd like to know more about..."
+                      value={whatsappMessage}
+                      onChange={(e) => setWhatsappMessage(e.target.value)}
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Creates a WhatsApp chat link. Use international format (+country code).
+                  </p>
+                </TabsContent>
+
+                <TabsContent value="meeting" className="space-y-4">
+                  <div>
+                    <Label htmlFor="meeting-platform">Platform</Label>
+                    <Select
+                      id="meeting-platform"
+                      value={meetingPlatform}
+                      onChange={(e) => setMeetingPlatform(e.target.value as 'zoom' | 'teams' | 'meet')}
+                    >
+                      <option value="zoom">Zoom</option>
+                      <option value="teams">Microsoft Teams</option>
+                      <option value="meet">Google Meet</option>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label htmlFor="meeting-url">Meeting URL or ID *</Label>
+                    <Input
+                      id="meeting-url"
+                      placeholder={
+                        meetingPlatform === 'zoom' ? 'https://zoom.us/j/1234567890 or 1234567890' :
+                        meetingPlatform === 'meet' ? 'https://meet.google.com/abc-defg-hij or abc-defg-hij' :
+                        'Full Teams meeting URL'
+                      }
+                      value={meetingUrl}
+                      onChange={(e) => setMeetingUrl(e.target.value)}
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Paste your meeting link or ID. For Zoom, you can use just the meeting ID.
+                  </p>
+                </TabsContent>
+
+                <TabsContent value="paypal" className="space-y-4">
+                  <div>
+                    <Label htmlFor="paypal-email">PayPal.me Username or Email *</Label>
+                    <Input
+                      id="paypal-email"
+                      placeholder="yourusername or email@example.com"
+                      value={paypalEmail}
+                      onChange={(e) => setPaypalEmail(e.target.value)}
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="paypal-amount">Amount (optional)</Label>
+                      <Input
+                        id="paypal-amount"
+                        type="number"
+                        step="0.01"
+                        placeholder="10.00"
+                        value={paypalAmount}
+                        onChange={(e) => setPaypalAmount(e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="paypal-currency">Currency</Label>
+                      <Select
+                        id="paypal-currency"
+                        value={paypalCurrency}
+                        onChange={(e) => setPaypalCurrency(e.target.value)}
+                      >
+                        <option value="USD">USD</option>
+                        <option value="EUR">EUR</option>
+                        <option value="GBP">GBP</option>
+                        <option value="CAD">CAD</option>
+                        <option value="AUD">AUD</option>
+                      </Select>
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Create a PayPal payment link. Use your PayPal.me username for best results.
+                  </p>
+                </TabsContent>
+
+                <TabsContent value="media" className="space-y-4">
+                  <div>
+                    <Label htmlFor="media-platform">Platform</Label>
+                    <Select
+                      id="media-platform"
+                      value={mediaPlatform}
+                      onChange={(e) => setMediaPlatform(e.target.value as 'spotify' | 'youtube' | 'soundcloud' | 'applemusic')}
+                    >
+                      <option value="spotify">Spotify</option>
+                      <option value="youtube">YouTube</option>
+                      <option value="soundcloud">SoundCloud</option>
+                      <option value="applemusic">Apple Music</option>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label htmlFor="media-url">Track/Video URL *</Label>
+                    <Input
+                      id="media-url"
+                      placeholder={
+                        mediaPlatform === 'spotify' ? 'https://open.spotify.com/track/...' :
+                        mediaPlatform === 'youtube' ? 'https://youtube.com/watch?v=...' :
+                        mediaPlatform === 'soundcloud' ? 'https://soundcloud.com/artist/track' :
+                        'https://music.apple.com/...'
+                      }
+                      value={mediaUrl}
+                      onChange={(e) => setMediaUrl(e.target.value)}
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Paste the full URL to your track, video, or playlist.
+                  </p>
+                </TabsContent>
               </Tabs>
             </CardContent>
           </Card>
@@ -1262,6 +1620,66 @@ export default function QRCodeGenerator() {
               <CardDescription>Basic QR code appearance</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
+              {/* Color Palette Selector */}
+              <div className="border-b pb-4">
+                <div className="flex items-center justify-between mb-3">
+                  <Label>Color Palettes</Label>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowPaletteSelector(!showPaletteSelector)}
+                  >
+                    {showPaletteSelector ? 'Hide' : 'Browse'} Palettes
+                  </Button>
+                </div>
+                {showPaletteSelector && (
+                  <div className="space-y-3 max-h-64 overflow-y-auto border rounded-lg p-3 bg-muted/30">
+                    {getCategories().map((category) => (
+                      <div key={category}>
+                        <p className="text-xs font-semibold mb-2 text-muted-foreground">{category}</p>
+                        <div className="grid grid-cols-2 gap-2">
+                          {allPalettes.filter(p => p.category === category).map((palette) => (
+                            <Button
+                              key={palette.name}
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="justify-start h-auto py-2"
+                              onClick={() => {
+                                setFgColor(palette.foreground)
+                                setBgColor(palette.background)
+                                if (palette.gradientStart && palette.gradientEnd) {
+                                  setGradientEnabled(true)
+                                  setGradientColorStart(palette.gradientStart)
+                                  setGradientColorEnd(palette.gradientEnd)
+                                } else {
+                                  setGradientEnabled(false)
+                                }
+                              }}
+                            >
+                              <div className="flex items-center gap-2 w-full">
+                                <div className="flex gap-1">
+                                  <div
+                                    className="w-5 h-5 rounded border"
+                                    style={{ backgroundColor: palette.foreground }}
+                                  />
+                                  <div
+                                    className="w-5 h-5 rounded border"
+                                    style={{ backgroundColor: palette.background }}
+                                  />
+                                </div>
+                                <span className="text-xs truncate">{palette.name}</span>
+                              </div>
+                            </Button>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
               {/* Basic Options - Always Visible */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
