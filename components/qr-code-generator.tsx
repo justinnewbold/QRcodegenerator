@@ -36,7 +36,9 @@ import {
 import { getAllPalettes, getCategories, saveCustomPalette, type ColorPalette } from "@/lib/color-palettes"
 import { compressImage, estimateQRDataSize, getQRCodeCapacity } from "@/lib/image-utils"
 import { saveToHistory, getHistory, clearHistory, deleteHistoryItem, type QRHistoryItem } from "@/lib/qr-history"
-import { Download, QrCode, Wifi, Mail, Phone, MessageSquare, User, Link2, Heart, Plus, X, AlertTriangle, Info, Calendar, Coins, Smartphone, History, FileText, Printer, Trash2, MapPin, Twitter, Instagram, Linkedin, Facebook, Music } from "lucide-react"
+import { saveTemplate, getTemplates, deleteTemplate, type QRTemplate } from "@/lib/qr-templates"
+import DragDropUpload from "@/components/drag-drop-upload"
+import { Download, QrCode, Wifi, Mail, Phone, MessageSquare, User, Link2, Heart, Plus, X, AlertTriangle, Info, Calendar, Coins, Smartphone, History, FileText, Printer, Trash2, MapPin, Twitter, Instagram, Linkedin, Facebook, Music, Save, FolderOpen, Package as PackageIcon } from "lucide-react"
 
 export default function QRCodeGenerator() {
   const [qrType, setQrType] = useState<string>("url")
@@ -150,6 +152,11 @@ export default function QRCodeGenerator() {
   const [showPaletteSelector, setShowPaletteSelector] = useState<boolean>(false)
   const [allPalettes, setAllPalettes] = useState<ColorPalette[]>([])
 
+  // Templates
+  const [templates, setTemplates] = useState<QRTemplate[]>([])
+  const [showTemplates, setShowTemplates] = useState<boolean>(false)
+  const [templateName, setTemplateName] = useState<string>("")
+
   // Advanced styling
   const [finderPattern, setFinderPattern] = useState<FinderPattern>("square")
   const [frameStyle, setFrameStyle] = useState<FrameStyle>("none")
@@ -167,10 +174,11 @@ export default function QRCodeGenerator() {
   // Customization advanced toggle
   const [showCustomizationAdvanced, setShowCustomizationAdvanced] = useState<boolean>(false)
 
-  // Load history and palettes on mount
+  // Load history, palettes, and templates on mount
   useEffect(() => {
     setHistory(getHistory())
     setAllPalettes(getAllPalettes())
+    setTemplates(getTemplates())
   }, [])
 
   useEffect(() => {
@@ -420,6 +428,81 @@ export default function QRCodeGenerator() {
       URL.revokeObjectURL(url)
     } else if (format === "pdf" && qrDataUrl) {
       generatePDF(qrDataUrl, `qrcode-${Date.now()}.pdf`)
+    }
+  }
+
+  const downloadAllFormats = () => {
+    if (!qrDataUrl) return
+
+    // Download PNG
+    downloadQR("png")
+
+    // Download SVG with a small delay
+    setTimeout(() => downloadQR("svg"), 300)
+
+    // Download PDF with a small delay
+    setTimeout(() => downloadQR("pdf"), 600)
+  }
+
+  const saveAsTemplate = () => {
+    if (!templateName.trim()) {
+      alert('Please enter a template name')
+      return
+    }
+
+    const template: Omit<QRTemplate, 'id' | 'timestamp'> = {
+      name: templateName,
+      type: qrType,
+      options: {
+        errorLevel,
+        size,
+        fgColor,
+        bgColor,
+        margin,
+        style: qrStyle,
+        finderPattern,
+        frameStyle,
+        frameText: frameText || undefined,
+        transparentBg,
+        gradientEnabled,
+        gradientType,
+        gradientColorStart,
+        gradientColorEnd,
+        gradientRotation,
+      },
+      contentPreview: content ? `${qrType}: ${content.substring(0, 50)}${content.length > 50 ? '...' : ''}` : undefined
+    }
+
+    saveTemplate(template)
+    setTemplates(getTemplates())
+    setTemplateName('')
+    alert(`Template "${templateName}" saved successfully!`)
+  }
+
+  const loadFromTemplate = (template: QRTemplate) => {
+    setErrorLevel(template.options.errorLevel)
+    setSize(template.options.size)
+    setFgColor(template.options.fgColor)
+    setBgColor(template.options.bgColor)
+    setMargin(template.options.margin)
+    setQrStyle(template.options.style)
+    setFinderPattern(template.options.finderPattern)
+    setFrameStyle(template.options.frameStyle)
+    setFrameText(template.options.frameText || '')
+    setTransparentBg(template.options.transparentBg)
+    setGradientEnabled(template.options.gradientEnabled)
+    if (template.options.gradientType) setGradientType(template.options.gradientType)
+    if (template.options.gradientColorStart) setGradientColorStart(template.options.gradientColorStart)
+    if (template.options.gradientColorEnd) setGradientColorEnd(template.options.gradientColorEnd)
+    if (template.options.gradientRotation !== undefined) setGradientRotation(template.options.gradientRotation)
+    setQrType(template.type)
+    setShowTemplates(false)
+  }
+
+  const handleDeleteTemplate = (id: string) => {
+    if (confirm('Delete this template?')) {
+      deleteTemplate(id)
+      setTemplates(getTemplates())
     }
   }
 
@@ -1949,65 +2032,46 @@ export default function QRCodeGenerator() {
 
                   <div className="border-t pt-4 space-y-3">
                     <Label>{qrType === 'pet' ? 'Add Image (Optional - Add Last)' : 'Logo (Optional - Add Last)'}</Label>
-                    <div className="space-y-2">
-                      <div>
-                        <Label htmlFor="logo-file" className="text-sm font-normal text-muted-foreground">
-                          Upload Image
-                        </Label>
-                        <Input
-                          id="logo-file"
-                          type="file"
-                          accept="image/*"
-                          onChange={(e) => {
-                            const file = e.target.files?.[0]
-                            if (file) {
-                              // Higher quality for logo since it's just overlaid, not encoded in QR data
-                              compressImage(file, 300, 300, 0.9)
-                                .then((compressed) => {
-                                  setLogoUrl(compressed)
-                                })
-                                .catch((error) => {
-                                  console.error('Error compressing image:', error)
-                                  alert('Failed to compress image. Please try a different image.')
-                                })
-                            }
-                          }}
-                          className="cursor-pointer"
-                        />
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <div className="flex-1 border-t" />
-                        <span className="text-xs text-muted-foreground">OR</span>
-                        <div className="flex-1 border-t" />
-                      </div>
-                      <div>
-                        <Label htmlFor="logo-url" className="text-sm font-normal text-muted-foreground">
-                          Image URL
-                        </Label>
-                        <Input
-                          id="logo-url"
-                          type="url"
-                          placeholder="https://example.com/logo.png"
-                          value={logoUrl}
-                          onChange={(e) => setLogoUrl(e.target.value)}
-                        />
-                      </div>
-                      {logoUrl && (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setLogoUrl("")}
-                          className="w-full"
-                        >
-                          {qrType === 'pet' ? 'Clear Image' : 'Clear Logo'}
-                        </Button>
-                      )}
+
+                    <DragDropUpload
+                      onFileSelect={(file) => {
+                        compressImage(file, 300, 300, 0.9)
+                          .then((compressed) => {
+                            setLogoUrl(compressed)
+                          })
+                          .catch((error) => {
+                            console.error('Error compressing image:', error)
+                            alert('Failed to compress image. Please try a different image.')
+                          })
+                      }}
+                      currentImage={logoUrl}
+                      onClear={() => setLogoUrl("")}
+                      label={qrType === 'pet' ? 'Upload Pet Image' : 'Upload Logo'}
+                    />
+
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1 border-t" />
+                      <span className="text-xs text-muted-foreground">OR</span>
+                      <div className="flex-1 border-t" />
                     </div>
+
+                    <div>
+                      <Label htmlFor="logo-url" className="text-sm font-normal text-muted-foreground">
+                        Image URL
+                      </Label>
+                      <Input
+                        id="logo-url"
+                        type="url"
+                        placeholder="https://example.com/logo.png"
+                        value={logoUrl}
+                        onChange={(e) => setLogoUrl(e.target.value)}
+                      />
+                    </div>
+
                     <p className="text-xs text-muted-foreground">
                       {qrType === 'pet'
-                        ? 'Upload last - Image appears in center of QR code'
-                        : 'Upload last - Logo appears in center (works best with high error correction)'}
+                        ? 'Image appears in center of QR code'
+                        : 'Logo appears in center (works best with high error correction)'}
                     </p>
                   </div>
                 </div>
@@ -2051,23 +2115,29 @@ export default function QRCodeGenerator() {
                     <div className="p-8 bg-white rounded-lg shadow-lg">
                       <img src={qrDataUrl} alt="QR Code" className="max-w-full" />
                     </div>
-                    <div className="flex flex-wrap gap-2 justify-center">
-                      <Button onClick={() => downloadQR("png")} className="gap-2">
-                        <Download className="h-4 w-4" />
-                        PNG
+                    <div className="space-y-2">
+                      <Button onClick={downloadAllFormats} className="w-full gap-2" size="lg">
+                        <PackageIcon className="h-5 w-5" />
+                        Download All Formats (PNG, SVG, PDF)
                       </Button>
-                      <Button onClick={() => downloadQR("svg")} variant="outline" className="gap-2">
-                        <Download className="h-4 w-4" />
-                        SVG
-                      </Button>
-                      <Button onClick={() => downloadQR("pdf")} variant="outline" className="gap-2">
-                        <FileText className="h-4 w-4" />
-                        PDF
-                      </Button>
-                      <Button onClick={openPrintView} variant="outline" className="gap-2">
-                        <Printer className="h-4 w-4" />
-                        Print
-                      </Button>
+                      <div className="flex flex-wrap gap-2 justify-center">
+                        <Button onClick={() => downloadQR("png")} variant="outline" className="gap-2" size="sm">
+                          <Download className="h-4 w-4" />
+                          PNG
+                        </Button>
+                        <Button onClick={() => downloadQR("svg")} variant="outline" className="gap-2" size="sm">
+                          <Download className="h-4 w-4" />
+                          SVG
+                        </Button>
+                        <Button onClick={() => downloadQR("pdf")} variant="outline" className="gap-2" size="sm">
+                          <FileText className="h-4 w-4" />
+                          PDF
+                        </Button>
+                        <Button onClick={openPrintView} variant="outline" className="gap-2" size="sm">
+                          <Printer className="h-4 w-4" />
+                          Print
+                        </Button>
+                      </div>
                     </div>
                   </>
                 ) : (
@@ -2143,6 +2213,97 @@ export default function QRCodeGenerator() {
           </Card>
 
           <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle>Templates</CardTitle>
+                <CardDescription>Save and reuse QR code settings</CardDescription>
+              </div>
+              {qrDataUrl && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowTemplates(!showTemplates)}
+                  className="gap-2"
+                >
+                  <FolderOpen className="h-4 w-4" />
+                  {showTemplates ? 'Hide' : 'Manage'}
+                </Button>
+              )}
+            </CardHeader>
+            <CardContent>
+              {qrDataUrl && (
+                <div className="space-y-3 mb-4 p-3 border rounded-lg bg-muted/30">
+                  <div>
+                    <Label htmlFor="template-name">Save Current Settings as Template</Label>
+                    <div className="flex gap-2 mt-2">
+                      <Input
+                        id="template-name"
+                        placeholder="Template name (e.g., My Brand QR)"
+                        value={templateName}
+                        onChange={(e) => setTemplateName(e.target.value)}
+                      />
+                      <Button onClick={saveAsTemplate} className="gap-2 whitespace-nowrap">
+                        <Save className="h-4 w-4" />
+                        Save
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {showTemplates && templates.length > 0 ? (
+                <div className="space-y-2">
+                  <p className="text-sm text-muted-foreground mb-3">
+                    Click to load template settings
+                  </p>
+                  {templates.map((template) => (
+                    <div
+                      key={template.id}
+                      className="flex items-center gap-3 p-3 border rounded-lg hover:bg-accent cursor-pointer group"
+                      onClick={() => loadFromTemplate(template)}
+                    >
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-sm">{template.name}</p>
+                        <p className="text-xs text-muted-foreground capitalize">
+                          {template.type} • {new Date(template.timestamp).toLocaleDateString()}
+                        </p>
+                        {template.contentPreview && (
+                          <p className="text-xs text-muted-foreground truncate mt-1">
+                            {template.contentPreview}
+                          </p>
+                        )}
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleDeleteTemplate(template.id)
+                        }}
+                        className="opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              ) : showTemplates ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Save className="h-12 w-12 mx-auto mb-2 opacity-20" />
+                  <p className="text-sm">No templates saved yet</p>
+                  <p className="text-xs">Save your favorite QR code settings above</p>
+                </div>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  <FolderOpen className="h-12 w-12 mx-auto mb-2 opacity-20" />
+                  <p className="text-sm">Templates saved: {templates.length}</p>
+                  <p className="text-xs">Generate a QR code to save settings</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
             <CardHeader>
               <CardTitle>About</CardTitle>
             </CardHeader>
@@ -2155,7 +2316,14 @@ export default function QRCodeGenerator() {
                 <strong>Features:</strong>
               </p>
               <ul className="list-disc list-inside space-y-1 ml-2">
-                <li>13 QR code types (URL, Text, Social Media, Location/Maps, Pet ID, WiFi, vCard, Email, SMS, Phone, Calendar Events, Cryptocurrency, App Store)</li>
+                <li>17 QR code types (URL, Text, WhatsApp, Meeting Links, PayPal, Media, Social Media, Location/Maps, Pet ID, WiFi, vCard, Email, SMS, Phone, Calendar Events, Cryptocurrency, App Store)</li>
+                <li>28+ color palette presets across 6 categories (Classic, Professional, Vibrant, Gradient, Pastel, Brand)</li>
+                <li>Enhanced vCard with social media links, full address, birthday</li>
+                <li>Save & load custom templates for reusable settings</li>
+                <li>Drag & drop logo/image upload</li>
+                <li>Download all formats at once (PNG, SVG, PDF)</li>
+                <li>Batch QR code generation from CSV</li>
+                <li>Multi-QR print layout for mass production</li>
                 <li>3 QR visual styles (Squares, Dots, Rounded)</li>
                 <li>4 custom corner patterns (Square, Rounded, Dots, Extra Rounded)</li>
                 <li>Gradient support (Linear & Radial)</li>
@@ -2165,7 +2333,6 @@ export default function QRCodeGenerator() {
                 <li>Customizable colors, sizes, and margins</li>
                 <li>Adjustable error correction levels</li>
                 <li>Logo embedding support</li>
-                <li>Download as PNG, SVG, or PDF</li>
                 <li>Print-optimized view</li>
                 <li>Local history (last 10 QR codes)</li>
                 <li>Quick example templates</li>
