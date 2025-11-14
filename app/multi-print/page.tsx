@@ -1,13 +1,18 @@
-import QRCodeGenerator from "@/components/qr-code-generator"
+import MultiPrint from "@/components/multi-print"
 import { ThemeToggle } from "@/components/theme-toggle"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { ScanLine, Package, Grid3x3 } from "lucide-react"
+import { Home, ScanLine, Package } from "lucide-react"
 
-export default function Home() {
+export default function MultiPrintPage() {
   return (
     <main className="min-h-screen bg-gradient-to-br from-background via-background to-secondary/20">
       <div className="fixed top-4 right-4 z-50 flex gap-2">
+        <Link href="/">
+          <Button variant="outline" size="icon" title="Home">
+            <Home className="h-5 w-5" />
+          </Button>
+        </Link>
         <Link href="/scan">
           <Button variant="outline" size="icon" title="Scan QR Code">
             <ScanLine className="h-5 w-5" />
@@ -18,15 +23,10 @@ export default function Home() {
             <Package className="h-5 w-5" />
           </Button>
         </Link>
-        <Link href="/multi-print">
-          <Button variant="outline" size="icon" title="Multi-Print">
-            <Grid3x3 className="h-5 w-5" />
-          </Button>
-        </Link>
         <ThemeToggle />
       </div>
       <div className="py-8">
-        <QRCodeGenerator />
+        <MultiPrint />
       </div>
       <footer className="text-center py-8 text-sm text-muted-foreground border-t">
         <p>
