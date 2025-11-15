@@ -44,7 +44,10 @@ import { useKeyboardShortcuts, getShortcutDisplay, type KeyboardShortcut } from 
 import DragDropUpload from "@/components/drag-drop-upload"
 import PresetExport from "@/components/preset-export"
 import EnhancedHistory from "@/components/enhanced-history"
-import { Download, QrCode, Wifi, Mail, Phone, MessageSquare, User, Link2, Heart, Plus, X, AlertTriangle, Info, Calendar, Coins, Smartphone, History, FileText, Printer, Trash2, MapPin, Twitter, Instagram, Linkedin, Facebook, Music, Save, FolderOpen, Package as PackageIcon, CheckCircle2, XCircle, AlertCircle, Eye, Keyboard, Share2, Image as ImageIcon, Palette } from "lucide-react"
+import PrintTemplateDesigner from "@/components/print-template-designer"
+import QRComparison from "@/components/qr-comparison"
+import AnimatedQRGenerator from "@/components/animated-qr-generator"
+import { Download, QrCode, Wifi, Mail, Phone, MessageSquare, User, Link2, Heart, Plus, X, AlertTriangle, Info, Calendar, Coins, Smartphone, History, FileText, Printer, Trash2, MapPin, Twitter, Instagram, Linkedin, Facebook, Music, Save, FolderOpen, Package as PackageIcon, CheckCircle2, XCircle, AlertCircle, Eye, Keyboard, Share2, Image as ImageIcon, Palette, CreditCard, GitCompare, Zap } from "lucide-react"
 
 export default function QRCodeGenerator() {
   const [qrType, setQrType] = useState<string>("url")
@@ -196,6 +199,11 @@ export default function QRCodeGenerator() {
 
   // SVG preview mode
   const [showSvgPreview, setShowSvgPreview] = useState<boolean>(false)
+
+  // New feature modals
+  const [showPrintTemplates, setShowPrintTemplates] = useState<boolean>(false)
+  const [showComparison, setShowComparison] = useState<boolean>(false)
+  const [showAnimated, setShowAnimated] = useState<boolean>(false)
 
   // Pet ID advanced toggle
   const [showPetAdvanced, setShowPetAdvanced] = useState<boolean>(false)
@@ -2491,6 +2499,25 @@ export default function QRCodeGenerator() {
                           Shortcuts
                         </Button>
                       </div>
+
+                      {/* Advanced Features */}
+                      <div className="pt-4 border-t">
+                        <p className="text-xs text-muted-foreground mb-2 text-center">Advanced Tools</p>
+                        <div className="flex flex-wrap gap-2 justify-center">
+                          <Button onClick={() => setShowPrintTemplates(true)} variant="secondary" className="gap-2" size="sm">
+                            <CreditCard className="h-4 w-4" />
+                            Print Templates
+                          </Button>
+                          <Button onClick={() => setShowComparison(true)} variant="secondary" className="gap-2" size="sm">
+                            <GitCompare className="h-4 w-4" />
+                            Compare Styles
+                          </Button>
+                          <Button onClick={() => setShowAnimated(true)} variant="secondary" className="gap-2" size="sm">
+                            <Zap className="h-4 w-4" />
+                            Animated QR
+                          </Button>
+                        </div>
+                      </div>
                     </div>
                   </>
                 ) : (
@@ -2824,6 +2851,47 @@ export default function QRCodeGenerator() {
             setHistory(getHistory())
           }}
           onRestore={loadFromHistory}
+        />
+      )}
+
+      {/* Print Template Designer Modal */}
+      {showPrintTemplates && qrDataUrl && (
+        <PrintTemplateDesigner
+          qrDataUrl={qrDataUrl}
+          onClose={() => setShowPrintTemplates(false)}
+        />
+      )}
+
+      {/* QR Comparison Modal */}
+      {showComparison && content && (
+        <QRComparison
+          content={content}
+          baseOptions={{
+            errorLevel,
+            size,
+            fgColor,
+            bgColor,
+            margin,
+            logoUrl,
+          }}
+          onClose={() => setShowComparison(false)}
+        />
+      )}
+
+      {/* Animated QR Generator Modal */}
+      {showAnimated && (
+        <AnimatedQRGenerator
+          qrOptions={{
+            content,
+            errorCorrectionLevel: errorLevel,
+            size,
+            foregroundColor: fgColor,
+            backgroundColor: bgColor,
+            margin,
+            style: qrStyle,
+            finderPattern,
+          }}
+          onClose={() => setShowAnimated(false)}
         />
       )}
 
