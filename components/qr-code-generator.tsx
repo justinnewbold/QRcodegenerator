@@ -32,6 +32,7 @@ import {
   type FrameStyle,
   type GradientConfig,
   type VCardData,
+  type EyeColors,
 } from "@/lib/qr-generator"
 import { getAllPalettes, getCategories, saveCustomPalette, type ColorPalette } from "@/lib/color-palettes"
 import { compressImage, estimateQRDataSize, getQRCodeCapacity } from "@/lib/image-utils"
@@ -40,7 +41,8 @@ import { saveTemplate, getTemplates, deleteTemplate, type QRTemplate } from "@/l
 import { validateQRCode, getQualityRating, type QRValidationResult } from "@/lib/qr-validator"
 import { useKeyboardShortcuts, getShortcutDisplay, type KeyboardShortcut } from "@/hooks/use-keyboard-shortcuts"
 import DragDropUpload from "@/components/drag-drop-upload"
-import { Download, QrCode, Wifi, Mail, Phone, MessageSquare, User, Link2, Heart, Plus, X, AlertTriangle, Info, Calendar, Coins, Smartphone, History, FileText, Printer, Trash2, MapPin, Twitter, Instagram, Linkedin, Facebook, Music, Save, FolderOpen, Package as PackageIcon, CheckCircle2, XCircle, AlertCircle, Eye, Keyboard, Share2, Image as ImageIcon } from "lucide-react"
+import PresetExport from "@/components/preset-export"
+import { Download, QrCode, Wifi, Mail, Phone, MessageSquare, User, Link2, Heart, Plus, X, AlertTriangle, Info, Calendar, Coins, Smartphone, History, FileText, Printer, Trash2, MapPin, Twitter, Instagram, Linkedin, Facebook, Music, Save, FolderOpen, Package as PackageIcon, CheckCircle2, XCircle, AlertCircle, Eye, Keyboard, Share2, Image as ImageIcon, Palette } from "lucide-react"
 
 export default function QRCodeGenerator() {
   const [qrType, setQrType] = useState<string>("url")
@@ -176,6 +178,19 @@ export default function QRCodeGenerator() {
   const [gradientColorStart, setGradientColorStart] = useState<string>("#667eea")
   const [gradientColorEnd, setGradientColorEnd] = useState<string>("#764ba2")
   const [gradientRotation, setGradientRotation] = useState<number>(45)
+
+  // Eye/Finder pattern colors
+  const [customEyeColors, setCustomEyeColors] = useState<boolean>(false)
+  const [eyeColorTopLeft, setEyeColorTopLeft] = useState<string>("#000000")
+  const [eyeColorTopRight, setEyeColorTopRight] = useState<string>("#000000")
+  const [eyeColorBottomLeft, setEyeColorBottomLeft] = useState<string>("#000000")
+
+  // Background image
+  const [backgroundImageUrl, setBackgroundImageUrl] = useState<string>("")
+  const [backgroundImageOpacity, setBackgroundImageOpacity] = useState<number>(0.3)
+
+  // Preset export modal
+  const [showPresetExport, setShowPresetExport] = useState<boolean>(false)
 
   // Pet ID advanced toggle
   const [showPetAdvanced, setShowPetAdvanced] = useState<boolean>(false)
@@ -422,6 +437,12 @@ export default function QRCodeGenerator() {
         rotation: gradientRotation,
       };
 
+      const eyeColors: EyeColors | undefined = customEyeColors ? {
+        topLeft: eyeColorTopLeft,
+        topRight: eyeColorTopRight,
+        bottomLeft: eyeColorBottomLeft,
+      } : undefined;
+
       const options: QRCodeOptions = {
         content,
         errorCorrectionLevel: errorLevel,
@@ -436,6 +457,9 @@ export default function QRCodeGenerator() {
         frameStyle,
         frameText: frameText || undefined,
         transparentBackground: transparentBg,
+        eyeColors,
+        backgroundImageUrl: backgroundImageUrl || undefined,
+        backgroundImageOpacity,
       }
 
       const result = await generateQRCode(options)
@@ -480,7 +504,9 @@ export default function QRCodeGenerator() {
     }
   }, [content, errorLevel, size, fgColor, bgColor, margin, logoUrl, qrStyle, qrType,
       gradientEnabled, gradientType, gradientColorStart, gradientColorEnd, gradientRotation,
-      finderPattern, frameStyle, frameText, transparentBg])
+      finderPattern, frameStyle, frameText, transparentBg,
+      customEyeColors, eyeColorTopLeft, eyeColorTopRight, eyeColorBottomLeft,
+      backgroundImageUrl, backgroundImageOpacity])
 
   // Removed auto-generation - now requires button click
 
@@ -2026,8 +2052,10 @@ export default function QRCodeGenerator() {
                       onChange={(e) => setQrStyle(e.target.value as QRStyle)}
                     >
                       <option value="squares">Squares (Classic)</option>
-                      <option value="dots">Dots (Rounded)</option>
+                      <option value="dots">Dots (Circular)</option>
                       <option value="rounded">Rounded Squares</option>
+                      <option value="extra-rounded">Extra Rounded</option>
+                      <option value="classy">Classy (Vertical)</option>
                     </Select>
                   </div>
 
@@ -2149,6 +2177,100 @@ export default function QRCodeGenerator() {
                             />
                           </div>
                         )}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="border-t pt-4 space-y-3">
+                    <div className="flex items-center gap-2">
+                      <input
+                        id="custom-eye-colors"
+                        type="checkbox"
+                        checked={customEyeColors}
+                        onChange={(e) => setCustomEyeColors(e.target.checked)}
+                        className="cursor-pointer"
+                      />
+                      <Label htmlFor="custom-eye-colors" className="cursor-pointer flex items-center gap-2">
+                        <Palette className="h-4 w-4" />
+                        Custom Eye/Corner Colors
+                      </Label>
+                    </div>
+                    {customEyeColors && (
+                      <div className="space-y-3 pl-6 border-l-2">
+                        <div className="grid grid-cols-3 gap-3">
+                          <div>
+                            <Label htmlFor="eye-color-tl" className="text-xs">Top Left</Label>
+                            <Input
+                              id="eye-color-tl"
+                              type="color"
+                              value={eyeColorTopLeft}
+                              onChange={(e) => setEyeColorTopLeft(e.target.value)}
+                              className="h-10"
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="eye-color-tr" className="text-xs">Top Right</Label>
+                            <Input
+                              id="eye-color-tr"
+                              type="color"
+                              value={eyeColorTopRight}
+                              onChange={(e) => setEyeColorTopRight(e.target.value)}
+                              className="h-10"
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="eye-color-bl" className="text-xs">Bottom Left</Label>
+                            <Input
+                              id="eye-color-bl"
+                              type="color"
+                              value={eyeColorBottomLeft}
+                              onChange={(e) => setEyeColorBottomLeft(e.target.value)}
+                              className="h-10"
+                            />
+                          </div>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          Customize the three corner finder patterns with different colors
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="border-t pt-4 space-y-3">
+                    <Label className="flex items-center gap-2">
+                      <ImageIcon className="h-4 w-4" />
+                      Background Image (Optional)
+                    </Label>
+                    <DragDropUpload
+                      onFileSelect={(file) => {
+                        compressImage(file, 800, 800, 0.9)
+                          .then((compressed) => {
+                            setBackgroundImageUrl(compressed)
+                          })
+                          .catch((error) => {
+                            console.error('Error compressing image:', error)
+                            alert('Failed to compress image. Please try a different image.')
+                          })
+                      }}
+                      currentImage={backgroundImageUrl}
+                      onClear={() => setBackgroundImageUrl("")}
+                      maxSize={5}
+                      label="Background Image"
+                    />
+                    {backgroundImageUrl && (
+                      <div>
+                        <Label htmlFor="bg-opacity">Background Blend: {Math.round(backgroundImageOpacity * 100)}%</Label>
+                        <Slider
+                          id="bg-opacity"
+                          value={backgroundImageOpacity}
+                          onValueChange={setBackgroundImageOpacity}
+                          min={0.1}
+                          max={0.9}
+                          step={0.1}
+                        />
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Higher values = lighter background, better scannability
+                        </p>
                       </div>
                     )}
                   </div>
@@ -2298,6 +2420,10 @@ export default function QRCodeGenerator() {
                         <Button onClick={() => downloadQR("pdf")} variant="outline" className="gap-2" size="sm">
                           <FileText className="h-4 w-4" />
                           PDF
+                        </Button>
+                        <Button onClick={() => setShowPresetExport(true)} variant="outline" className="gap-2" size="sm">
+                          <ImageIcon className="h-4 w-4" />
+                          Preset Sizes
                         </Button>
                         <Button onClick={openPrintView} variant="outline" className="gap-2" size="sm">
                           <Printer className="h-4 w-4" />
@@ -2666,6 +2792,14 @@ export default function QRCodeGenerator() {
           </Card>
         </div>
       </div>
+
+      {/* Preset Export Modal */}
+      {showPresetExport && qrDataUrl && (
+        <PresetExport
+          qrDataUrl={qrDataUrl}
+          onClose={() => setShowPresetExport(false)}
+        />
+      )}
 
       {/* Keyboard Shortcuts Modal */}
       {showShortcuts && (
