@@ -39,6 +39,7 @@ import { compressImage, estimateQRDataSize, getQRCodeCapacity } from "@/lib/imag
 import { saveToHistory, getHistory, clearHistory, deleteHistoryItem, type QRHistoryItem } from "@/lib/qr-history"
 import { saveTemplate, getTemplates, deleteTemplate, type QRTemplate } from "@/lib/qr-templates"
 import { validateQRCode, getQualityRating, type QRValidationResult } from "@/lib/qr-validator"
+import { generateStyledSVG, optimizeSVG, svgToDataURL } from "@/lib/svg-generator"
 import { useKeyboardShortcuts, getShortcutDisplay, type KeyboardShortcut } from "@/hooks/use-keyboard-shortcuts"
 import DragDropUpload from "@/components/drag-drop-upload"
 import PresetExport from "@/components/preset-export"
@@ -191,6 +192,9 @@ export default function QRCodeGenerator() {
 
   // Preset export modal
   const [showPresetExport, setShowPresetExport] = useState<boolean>(false)
+
+  // SVG preview mode
+  const [showSvgPreview, setShowSvgPreview] = useState<boolean>(false)
 
   // Pet ID advanced toggle
   const [showPetAdvanced, setShowPetAdvanced] = useState<boolean>(false)
@@ -464,7 +468,22 @@ export default function QRCodeGenerator() {
 
       const result = await generateQRCode(options)
       setQrDataUrl(result.dataUrl)
-      setQrSvg(result.svg)
+
+      // Generate styled SVG with all customizations
+      const styledSvg = await generateStyledSVG({
+        content,
+        errorCorrectionLevel: errorLevel,
+        size,
+        foregroundColor: fgColor,
+        backgroundColor: bgColor,
+        margin,
+        style: qrStyle,
+        gradient: gradientConfig,
+        finderPattern,
+        eyeColors,
+        transparentBackground: transparentBg,
+      })
+      setQrSvg(styledSvg)
 
       // Validate QR code quality
       const validation = validateQRCode(
@@ -2386,9 +2405,46 @@ export default function QRCodeGenerator() {
                 )}
                 {qrDataUrl ? (
                   <>
-                    <div className="p-8 bg-white rounded-lg shadow-lg">
-                      <img src={qrDataUrl} alt="QR Code" className="max-w-full" />
+                    <div className="w-full space-y-3">
+                      {/* SVG/PNG Toggle */}
+                      <div className="flex items-center justify-center gap-2">
+                        <Button
+                          variant={!showSvgPreview ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => setShowSvgPreview(false)}
+                          className="gap-2"
+                        >
+                          <ImageIcon className="h-4 w-4" />
+                          PNG Preview
+                        </Button>
+                        <Button
+                          variant={showSvgPreview ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => setShowSvgPreview(true)}
+                          className="gap-2"
+                        >
+                          <FileText className="h-4 w-4" />
+                          SVG Preview
+                        </Button>
+                      </div>
+
+                      {/* QR Code Display */}
+                      <div className="p-8 bg-white rounded-lg shadow-lg flex items-center justify-center">
+                        {showSvgPreview && qrSvg ? (
+                          <div dangerouslySetInnerHTML={{ __html: qrSvg }} className="max-w-full" />
+                        ) : (
+                          <img src={qrDataUrl} alt="QR Code" className="max-w-full" />
+                        )}
+                      </div>
+
+                      {showSvgPreview && qrSvg && (
+                        <div className="text-center text-sm text-muted-foreground">
+                          <p>✨ Styled SVG with gradients, custom shapes, and eye colors</p>
+                          <p className="text-xs mt-1">Scalable vector format - perfect for print and web</p>
+                        </div>
+                      )}
                     </div>
+
                     <div className="space-y-2">
                       <div className="flex gap-2">
                         <Button onClick={downloadAllFormats} className="flex-1 gap-2" size="lg">
