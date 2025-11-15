@@ -37,8 +37,9 @@ import { getAllPalettes, getCategories, saveCustomPalette, type ColorPalette } f
 import { compressImage, estimateQRDataSize, getQRCodeCapacity } from "@/lib/image-utils"
 import { saveToHistory, getHistory, clearHistory, deleteHistoryItem, type QRHistoryItem } from "@/lib/qr-history"
 import { saveTemplate, getTemplates, deleteTemplate, type QRTemplate } from "@/lib/qr-templates"
+import { validateQRCode, getQualityRating, type QRValidationResult } from "@/lib/qr-validator"
 import DragDropUpload from "@/components/drag-drop-upload"
-import { Download, QrCode, Wifi, Mail, Phone, MessageSquare, User, Link2, Heart, Plus, X, AlertTriangle, Info, Calendar, Coins, Smartphone, History, FileText, Printer, Trash2, MapPin, Twitter, Instagram, Linkedin, Facebook, Music, Save, FolderOpen, Package as PackageIcon } from "lucide-react"
+import { Download, QrCode, Wifi, Mail, Phone, MessageSquare, User, Link2, Heart, Plus, X, AlertTriangle, Info, Calendar, Coins, Smartphone, History, FileText, Printer, Trash2, MapPin, Twitter, Instagram, Linkedin, Facebook, Music, Save, FolderOpen, Package as PackageIcon, CheckCircle2, XCircle, AlertCircle, Eye } from "lucide-react"
 
 export default function QRCodeGenerator() {
   const [qrType, setQrType] = useState<string>("url")
@@ -156,6 +157,10 @@ export default function QRCodeGenerator() {
   const [templates, setTemplates] = useState<QRTemplate[]>([])
   const [showTemplates, setShowTemplates] = useState<boolean>(false)
   const [templateName, setTemplateName] = useState<string>("")
+
+  // Validation
+  const [validationResult, setValidationResult] = useState<QRValidationResult | null>(null)
+  const [showValidation, setShowValidation] = useState<boolean>(false)
 
   // Advanced styling
   const [finderPattern, setFinderPattern] = useState<FinderPattern>("square")
@@ -382,6 +387,19 @@ export default function QRCodeGenerator() {
       const result = await generateQRCode(options)
       setQrDataUrl(result.dataUrl)
       setQrSvg(result.svg)
+
+      // Validate QR code quality
+      const validation = validateQRCode(
+        fgColor,
+        bgColor,
+        size,
+        errorLevel,
+        0.2, // default logo size (20%)
+        !!logoUrl,
+        content.length
+      )
+      setValidationResult(validation)
+      setShowValidation(true)
 
       // Save to history
       saveToHistory({
@@ -2149,6 +2167,159 @@ export default function QRCodeGenerator() {
               </div>
             </CardContent>
           </Card>
+
+          {/* QR Code Quality Validator */}
+          {validationResult && (
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle>Quality Check</CardTitle>
+                  <CardDescription>Scannability analysis and recommendations</CardDescription>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowValidation(!showValidation)}
+                  className="gap-2"
+                >
+                  <Eye className="h-4 w-4" />
+                  {showValidation ? 'Hide' : 'Show'}
+                </Button>
+              </CardHeader>
+              {showValidation && (
+                <CardContent className="space-y-4">
+                  {/* Overall Score */}
+                  <div className="text-center p-4 border-2 rounded-lg bg-muted/30">
+                    <div className="flex items-center justify-center gap-3 mb-2">
+                      <div className={`text-4xl font-bold ${getQualityRating(validationResult.overallScore).color}`}>
+                        {validationResult.overallScore}
+                      </div>
+                      <div className="text-left">
+                        <p className={`text-lg font-semibold ${getQualityRating(validationResult.overallScore).color}`}>
+                          {getQualityRating(validationResult.overallScore).rating}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          Overall Quality
+                        </p>
+                      </div>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      {getQualityRating(validationResult.overallScore).description}
+                    </p>
+                  </div>
+
+                  {/* Detailed Metrics */}
+                  <div className="space-y-3">
+                    {/* Contrast */}
+                    <div className="p-3 border rounded-lg">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          {validationResult.contrast.passed ? (
+                            <CheckCircle2 className="h-4 w-4 text-green-600" />
+                          ) : (
+                            <XCircle className="h-4 w-4 text-red-600" />
+                          )}
+                          <span className="font-medium text-sm">Contrast Ratio</span>
+                        </div>
+                        <span className="text-sm font-mono">{validationResult.contrast.ratio}:1</span>
+                      </div>
+                      <div className="w-full bg-muted rounded-full h-2">
+                        <div
+                          className={`h-2 rounded-full ${validationResult.contrast.passed ? 'bg-green-600' : 'bg-red-600'}`}
+                          style={{ width: `${Math.min(100, (validationResult.contrast.ratio / 7) * 100)}%` }}
+                        />
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Minimum 3:1 required, 7:1 excellent
+                      </p>
+                    </div>
+
+                    {/* Size & Distance */}
+                    <div className="p-3 border rounded-lg">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Info className="h-4 w-4 text-blue-600" />
+                        <span className="font-medium text-sm">Scan Distance</span>
+                      </div>
+                      <p className="text-sm">
+                        Can be scanned from: <span className="font-semibold">{validationResult.size.recommendedDistance}</span>
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Module size: {validationResult.size.moduleSize}px
+                      </p>
+                    </div>
+
+                    {/* Logo Warning */}
+                    {validationResult.logo.percentageOfQR > 0 && (
+                      <div className="p-3 border rounded-lg">
+                        <div className="flex items-center gap-2 mb-2">
+                          {validationResult.logo.warning ? (
+                            <AlertCircle className="h-4 w-4 text-amber-600" />
+                          ) : (
+                            <CheckCircle2 className="h-4 w-4 text-green-600" />
+                          )}
+                          <span className="font-medium text-sm">Logo Size</span>
+                        </div>
+                        <p className="text-sm">
+                          {validationResult.logo.percentageOfQR}% of QR code
+                        </p>
+                        {validationResult.logo.warning && (
+                          <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+                            {validationResult.logo.warning}
+                          </p>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Error Correction */}
+                    <div className="p-3 border rounded-lg">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Info className="h-4 w-4 text-blue-600" />
+                        <span className="font-medium text-sm">Error Correction</span>
+                      </div>
+                      <p className="text-sm">
+                        Level {validationResult.errorCorrection.level}: {validationResult.errorCorrection.capacity}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {validationResult.errorCorrection.recommendation}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Issues & Recommendations */}
+                  {(validationResult.scannability.issues.length > 0 || validationResult.scannability.recommendations.length > 0) && (
+                    <div className="space-y-2 pt-2 border-t">
+                      {validationResult.scannability.issues.length > 0 && (
+                        <div>
+                          <p className="text-sm font-semibold text-red-600 dark:text-red-400 mb-1">Issues:</p>
+                          <ul className="space-y-1">
+                            {validationResult.scannability.issues.map((issue, idx) => (
+                              <li key={idx} className="text-xs text-red-600 dark:text-red-400 flex items-start gap-2">
+                                <XCircle className="h-3 w-3 mt-0.5 flex-shrink-0" />
+                                <span>{issue}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                      {validationResult.scannability.recommendations.length > 0 && (
+                        <div>
+                          <p className="text-sm font-semibold text-blue-600 dark:text-blue-400 mb-1">Recommendations:</p>
+                          <ul className="space-y-1">
+                            {validationResult.scannability.recommendations.map((rec, idx) => (
+                              <li key={idx} className="text-xs text-blue-600 dark:text-blue-400 flex items-start gap-2">
+                                <AlertCircle className="h-3 w-3 mt-0.5 flex-shrink-0" />
+                                <span>{rec}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </CardContent>
+              )}
+            </Card>
+          )}
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
