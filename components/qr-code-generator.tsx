@@ -38,8 +38,9 @@ import { compressImage, estimateQRDataSize, getQRCodeCapacity } from "@/lib/imag
 import { saveToHistory, getHistory, clearHistory, deleteHistoryItem, type QRHistoryItem } from "@/lib/qr-history"
 import { saveTemplate, getTemplates, deleteTemplate, type QRTemplate } from "@/lib/qr-templates"
 import { validateQRCode, getQualityRating, type QRValidationResult } from "@/lib/qr-validator"
+import { useKeyboardShortcuts, getShortcutDisplay, type KeyboardShortcut } from "@/hooks/use-keyboard-shortcuts"
 import DragDropUpload from "@/components/drag-drop-upload"
-import { Download, QrCode, Wifi, Mail, Phone, MessageSquare, User, Link2, Heart, Plus, X, AlertTriangle, Info, Calendar, Coins, Smartphone, History, FileText, Printer, Trash2, MapPin, Twitter, Instagram, Linkedin, Facebook, Music, Save, FolderOpen, Package as PackageIcon, CheckCircle2, XCircle, AlertCircle, Eye } from "lucide-react"
+import { Download, QrCode, Wifi, Mail, Phone, MessageSquare, User, Link2, Heart, Plus, X, AlertTriangle, Info, Calendar, Coins, Smartphone, History, FileText, Printer, Trash2, MapPin, Twitter, Instagram, Linkedin, Facebook, Music, Save, FolderOpen, Package as PackageIcon, CheckCircle2, XCircle, AlertCircle, Eye, Keyboard, Share2, Image as ImageIcon } from "lucide-react"
 
 export default function QRCodeGenerator() {
   const [qrType, setQrType] = useState<string>("url")
@@ -162,6 +163,9 @@ export default function QRCodeGenerator() {
   const [validationResult, setValidationResult] = useState<QRValidationResult | null>(null)
   const [showValidation, setShowValidation] = useState<boolean>(false)
 
+  // Keyboard shortcuts
+  const [showShortcuts, setShowShortcuts] = useState<boolean>(false)
+
   // Advanced styling
   const [finderPattern, setFinderPattern] = useState<FinderPattern>("square")
   const [frameStyle, setFrameStyle] = useState<FrameStyle>("none")
@@ -185,6 +189,56 @@ export default function QRCodeGenerator() {
     setAllPalettes(getAllPalettes())
     setTemplates(getTemplates())
   }, [])
+
+  // Keyboard shortcuts
+  const shortcuts: KeyboardShortcut[] = [
+    {
+      key: 'g',
+      ctrlOrCmd: true,
+      description: 'Generate QR Code',
+      action: () => {
+        if (content) generateQR()
+      }
+    },
+    {
+      key: 's',
+      ctrlOrCmd: true,
+      description: 'Download PNG',
+      action: () => {
+        if (qrDataUrl) downloadQR('png')
+      }
+    },
+    {
+      key: 'd',
+      ctrlOrCmd: true,
+      description: 'Download All Formats',
+      action: () => {
+        if (qrDataUrl) downloadAllFormats()
+      }
+    },
+    {
+      key: 'p',
+      ctrlOrCmd: true,
+      description: 'Print QR Code',
+      action: () => {
+        if (qrDataUrl) openPrintView()
+      }
+    },
+    {
+      key: 'k',
+      ctrlOrCmd: true,
+      description: 'Toggle Shortcuts Help',
+      action: () => setShowShortcuts(!showShortcuts)
+    },
+    {
+      key: '?',
+      shift: true,
+      description: 'Show Shortcuts Help',
+      action: () => setShowShortcuts(true)
+    }
+  ]
+
+  useKeyboardShortcuts(shortcuts)
 
   useEffect(() => {
     let newContent = ""
@@ -430,12 +484,61 @@ export default function QRCodeGenerator() {
 
   // Removed auto-generation - now requires button click
 
-  const downloadQR = (format: "png" | "svg" | "pdf") => {
+  const downloadQR = (format: "png" | "svg" | "pdf" | "jpeg" | "webp") => {
     if (format === "png" && qrDataUrl) {
       const link = document.createElement("a")
       link.href = qrDataUrl
       link.download = `qrcode-${Date.now()}.png`
       link.click()
+    } else if (format === "jpeg" && qrDataUrl) {
+      // Convert PNG to JPEG
+      const canvas = document.createElement("canvas")
+      const img = new Image()
+      img.onload = () => {
+        canvas.width = img.width
+        canvas.height = img.height
+        const ctx = canvas.getContext("2d")
+        if (ctx) {
+          // Fill white background for JPEG
+          ctx.fillStyle = "#ffffff"
+          ctx.fillRect(0, 0, canvas.width, canvas.height)
+          ctx.drawImage(img, 0, 0)
+          canvas.toBlob((blob) => {
+            if (blob) {
+              const url = URL.createObjectURL(blob)
+              const link = document.createElement("a")
+              link.href = url
+              link.download = `qrcode-${Date.now()}.jpg`
+              link.click()
+              URL.revokeObjectURL(url)
+            }
+          }, "image/jpeg", 0.95)
+        }
+      }
+      img.src = qrDataUrl
+    } else if (format === "webp" && qrDataUrl) {
+      // Convert PNG to WebP
+      const canvas = document.createElement("canvas")
+      const img = new Image()
+      img.onload = () => {
+        canvas.width = img.width
+        canvas.height = img.height
+        const ctx = canvas.getContext("2d")
+        if (ctx) {
+          ctx.drawImage(img, 0, 0)
+          canvas.toBlob((blob) => {
+            if (blob) {
+              const url = URL.createObjectURL(blob)
+              const link = document.createElement("a")
+              link.href = url
+              link.download = `qrcode-${Date.now()}.webp`
+              link.click()
+              URL.revokeObjectURL(url)
+            }
+          }, "image/webp", 0.95)
+        }
+      }
+      img.src = qrDataUrl
     } else if (format === "svg" && qrSvg) {
       const blob = new Blob([qrSvg], { type: "image/svg+xml" })
       const url = URL.createObjectURL(blob)
@@ -446,6 +549,37 @@ export default function QRCodeGenerator() {
       URL.revokeObjectURL(url)
     } else if (format === "pdf" && qrDataUrl) {
       generatePDF(qrDataUrl, `qrcode-${Date.now()}.pdf`)
+    }
+  }
+
+  const shareQRCode = async () => {
+    if (!qrDataUrl) return
+
+    try {
+      // Convert data URL to blob
+      const response = await fetch(qrDataUrl)
+      const blob = await response.blob()
+      const file = new File([blob], `qrcode-${Date.now()}.png`, { type: 'image/png' })
+
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({
+          files: [file],
+          title: 'QR Code',
+          text: `QR Code for ${qrType}`,
+        })
+      } else {
+        // Fallback: copy to clipboard
+        try {
+          const item = new ClipboardItem({ 'image/png': blob })
+          await navigator.clipboard.write([item])
+          alert('QR Code copied to clipboard!')
+        } catch {
+          alert('Sharing not supported on this device. Please use download instead.')
+        }
+      }
+    } catch (error) {
+      console.error('Error sharing:', error)
+      alert('Unable to share. Please use download instead.')
     }
   }
 
@@ -2134,14 +2268,28 @@ export default function QRCodeGenerator() {
                       <img src={qrDataUrl} alt="QR Code" className="max-w-full" />
                     </div>
                     <div className="space-y-2">
-                      <Button onClick={downloadAllFormats} className="w-full gap-2" size="lg">
-                        <PackageIcon className="h-5 w-5" />
-                        Download All Formats (PNG, SVG, PDF)
-                      </Button>
+                      <div className="flex gap-2">
+                        <Button onClick={downloadAllFormats} className="flex-1 gap-2" size="lg">
+                          <PackageIcon className="h-5 w-5" />
+                          Download All
+                        </Button>
+                        <Button onClick={shareQRCode} variant="secondary" className="flex-1 gap-2" size="lg">
+                          <Share2 className="h-5 w-5" />
+                          Share
+                        </Button>
+                      </div>
                       <div className="flex flex-wrap gap-2 justify-center">
                         <Button onClick={() => downloadQR("png")} variant="outline" className="gap-2" size="sm">
                           <Download className="h-4 w-4" />
                           PNG
+                        </Button>
+                        <Button onClick={() => downloadQR("jpeg")} variant="outline" className="gap-2" size="sm">
+                          <ImageIcon className="h-4 w-4" />
+                          JPEG
+                        </Button>
+                        <Button onClick={() => downloadQR("webp")} variant="outline" className="gap-2" size="sm">
+                          <ImageIcon className="h-4 w-4" />
+                          WebP
                         </Button>
                         <Button onClick={() => downloadQR("svg")} variant="outline" className="gap-2" size="sm">
                           <Download className="h-4 w-4" />
@@ -2154,6 +2302,10 @@ export default function QRCodeGenerator() {
                         <Button onClick={openPrintView} variant="outline" className="gap-2" size="sm">
                           <Printer className="h-4 w-4" />
                           Print
+                        </Button>
+                        <Button onClick={() => setShowShortcuts(true)} variant="outline" className="gap-2" size="sm">
+                          <Keyboard className="h-4 w-4" />
+                          Shortcuts
                         </Button>
                       </div>
                     </div>
@@ -2514,6 +2666,49 @@ export default function QRCodeGenerator() {
           </Card>
         </div>
       </div>
+
+      {/* Keyboard Shortcuts Modal */}
+      {showShortcuts && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setShowShortcuts(false)}>
+          <Card className="w-full max-w-md" onClick={(e) => e.stopPropagation()}>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Keyboard className="h-5 w-5" />
+                  <CardTitle>Keyboard Shortcuts</CardTitle>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowShortcuts(false)}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+              <CardDescription>Power user shortcuts for faster QR code generation</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {shortcuts.map((shortcut, idx) => (
+                  <div key={idx} className="flex items-center justify-between p-2 rounded hover:bg-accent">
+                    <span className="text-sm">{shortcut.description}</span>
+                    <kbd className="px-2 py-1 text-xs font-mono bg-muted border rounded">
+                      {getShortcutDisplay(shortcut)}
+                    </kbd>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-4 p-3 bg-muted rounded-lg">
+                <p className="text-xs text-muted-foreground">
+                  Press <kbd className="px-1 py-0.5 text-xs font-mono bg-background border rounded">?</kbd> or{' '}
+                  <kbd className="px-1 py-0.5 text-xs font-mono bg-background border rounded">Ctrl+K</kbd>{' '}
+                  anytime to toggle this help
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </div>
   )
 }
