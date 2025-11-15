@@ -43,6 +43,7 @@ import { generateStyledSVG, optimizeSVG, svgToDataURL } from "@/lib/svg-generato
 import { useKeyboardShortcuts, getShortcutDisplay, type KeyboardShortcut } from "@/hooks/use-keyboard-shortcuts"
 import DragDropUpload from "@/components/drag-drop-upload"
 import PresetExport from "@/components/preset-export"
+import EnhancedHistory from "@/components/enhanced-history"
 import { Download, QrCode, Wifi, Mail, Phone, MessageSquare, User, Link2, Heart, Plus, X, AlertTriangle, Info, Calendar, Coins, Smartphone, History, FileText, Printer, Trash2, MapPin, Twitter, Instagram, Linkedin, Facebook, Music, Save, FolderOpen, Package as PackageIcon, CheckCircle2, XCircle, AlertCircle, Eye, Keyboard, Share2, Image as ImageIcon, Palette } from "lucide-react"
 
 export default function QRCodeGenerator() {
@@ -2656,64 +2657,22 @@ export default function QRCodeGenerator() {
           )}
 
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <div>
-                <CardTitle>History</CardTitle>
-                <CardDescription>Your recently generated QR codes</CardDescription>
-              </div>
-              {history.length > 0 && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleClearHistory}
-                  className="gap-2"
-                >
-                  <Trash2 className="h-4 w-4" />
-                  Clear
-                </Button>
-              )}
+            <CardHeader>
+              <CardTitle>History & Organization</CardTitle>
+              <CardDescription>Manage your QR code library with search, tags, and favorites</CardDescription>
             </CardHeader>
             <CardContent>
-              {history.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  <History className="h-12 w-12 mx-auto mb-2 opacity-20" />
-                  <p className="text-sm">No history yet</p>
-                  <p className="text-xs">Generated QR codes will appear here</p>
-                </div>
-              ) : (
-                <div className="space-y-3 max-h-[400px] overflow-y-auto">
-                  {history.map((item) => (
-                    <div
-                      key={item.id}
-                      className="flex items-center gap-3 p-3 border rounded-lg hover:bg-accent cursor-pointer group"
-                      onClick={() => loadFromHistory(item)}
-                    >
-                      <img
-                        src={item.preview}
-                        alt="QR Preview"
-                        className="w-16 h-16 rounded border"
-                      />
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-sm capitalize">{item.type}</p>
-                        <p className="text-xs text-muted-foreground truncate">
-                          {new Date(item.timestamp).toLocaleString()}
-                        </p>
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          handleDeleteHistoryItem(item.id)
-                        }}
-                        className="opacity-0 group-hover:opacity-100 transition-opacity"
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              )}
+              <Button
+                onClick={() => setShowHistory(true)}
+                className="w-full gap-2"
+                size="lg"
+              >
+                <History className="h-5 w-5" />
+                Open History Manager ({history.length} codes)
+              </Button>
+              <p className="text-xs text-muted-foreground mt-2 text-center">
+                Search, filter, tag, and organize up to 100 QR codes
+              </p>
             </CardContent>
           </Card>
 
@@ -2854,6 +2813,17 @@ export default function QRCodeGenerator() {
         <PresetExport
           qrDataUrl={qrDataUrl}
           onClose={() => setShowPresetExport(false)}
+        />
+      )}
+
+      {/* Enhanced History Modal */}
+      {showHistory && (
+        <EnhancedHistory
+          onClose={() => {
+            setShowHistory(false)
+            setHistory(getHistory())
+          }}
+          onRestore={loadFromHistory}
         />
       )}
 
