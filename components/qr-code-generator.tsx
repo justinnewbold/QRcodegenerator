@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Select } from "@/components/ui/select"
+import { SimpleSelect as Select } from "@/components/ui/simple-select"
 import { Button } from "@/components/ui/button"
 import { Slider } from "@/components/ui/slider"
 import {
@@ -32,11 +32,27 @@ import {
   type FrameStyle,
   type GradientConfig,
   type VCardData,
+  type EyeColors,
 } from "@/lib/qr-generator"
 import { getAllPalettes, getCategories, saveCustomPalette, type ColorPalette } from "@/lib/color-palettes"
 import { compressImage, estimateQRDataSize, getQRCodeCapacity } from "@/lib/image-utils"
 import { saveToHistory, getHistory, clearHistory, deleteHistoryItem, type QRHistoryItem } from "@/lib/qr-history"
-import { Download, QrCode, Wifi, Mail, Phone, MessageSquare, User, Link2, Heart, Plus, X, AlertTriangle, Info, Calendar, Coins, Smartphone, History, FileText, Printer, Trash2, MapPin, Twitter, Instagram, Linkedin, Facebook, Music } from "lucide-react"
+import { saveTemplate, getTemplates, deleteTemplate, type QRTemplate } from "@/lib/qr-templates"
+import { validateQRCode, getQualityRating, type QRValidationResult } from "@/lib/qr-validator"
+import { generateStyledSVG, optimizeSVG, svgToDataURL } from "@/lib/svg-generator"
+import { useKeyboardShortcuts, getShortcutDisplay, type KeyboardShortcut } from "@/hooks/use-keyboard-shortcuts"
+import DragDropUpload from "@/components/drag-drop-upload"
+import PresetExport from "@/components/preset-export"
+import EnhancedHistory from "@/components/enhanced-history"
+import PrintTemplateDesigner from "@/components/print-template-designer"
+import QRComparison from "@/components/qr-comparison"
+import AnimatedQRGenerator from "@/components/animated-qr-generator"
+import BulkCSVGenerator from "@/components/bulk-csv-generator"
+import BrandKitManager from "@/components/brand-kit-manager"
+import SmartQRScanner from "@/components/smart-qr-scanner"
+import AnalyticsDashboard from "@/components/analytics-dashboard"
+import DynamicQRManager from "@/components/dynamic-qr-manager"
+import { Download, QrCode, Wifi, Mail, Phone, MessageSquare, User, Link2, Heart, Plus, X, AlertTriangle, Info, Calendar, Coins, Smartphone, History, FileText, Printer, Trash2, MapPin, Twitter, Instagram, Linkedin, Facebook, Music, Save, FolderOpen, Package as PackageIcon, CheckCircle2, XCircle, AlertCircle, Eye, Keyboard, Share2, Image as ImageIcon, Palette, CreditCard, GitCompare, Zap, FileSpreadsheet, Scan, BarChart3, RefreshCw } from "lucide-react"
 
 export default function QRCodeGenerator() {
   const [qrType, setQrType] = useState<string>("url")
@@ -150,6 +166,18 @@ export default function QRCodeGenerator() {
   const [showPaletteSelector, setShowPaletteSelector] = useState<boolean>(false)
   const [allPalettes, setAllPalettes] = useState<ColorPalette[]>([])
 
+  // Templates
+  const [templates, setTemplates] = useState<QRTemplate[]>([])
+  const [showTemplates, setShowTemplates] = useState<boolean>(false)
+  const [templateName, setTemplateName] = useState<string>("")
+
+  // Validation
+  const [validationResult, setValidationResult] = useState<QRValidationResult | null>(null)
+  const [showValidation, setShowValidation] = useState<boolean>(false)
+
+  // Keyboard shortcuts
+  const [showShortcuts, setShowShortcuts] = useState<boolean>(false)
+
   // Advanced styling
   const [finderPattern, setFinderPattern] = useState<FinderPattern>("square")
   const [frameStyle, setFrameStyle] = useState<FrameStyle>("none")
@@ -161,17 +189,94 @@ export default function QRCodeGenerator() {
   const [gradientColorEnd, setGradientColorEnd] = useState<string>("#764ba2")
   const [gradientRotation, setGradientRotation] = useState<number>(45)
 
+  // Eye/Finder pattern colors
+  const [customEyeColors, setCustomEyeColors] = useState<boolean>(false)
+  const [eyeColorTopLeft, setEyeColorTopLeft] = useState<string>("#000000")
+  const [eyeColorTopRight, setEyeColorTopRight] = useState<string>("#000000")
+  const [eyeColorBottomLeft, setEyeColorBottomLeft] = useState<string>("#000000")
+
+  // Background image
+  const [backgroundImageUrl, setBackgroundImageUrl] = useState<string>("")
+  const [backgroundImageOpacity, setBackgroundImageOpacity] = useState<number>(0.3)
+
+  // Preset export modal
+  const [showPresetExport, setShowPresetExport] = useState<boolean>(false)
+
+  // SVG preview mode
+  const [showSvgPreview, setShowSvgPreview] = useState<boolean>(false)
+
+  // New feature modals
+  const [showPrintTemplates, setShowPrintTemplates] = useState<boolean>(false)
+  const [showComparison, setShowComparison] = useState<boolean>(false)
+  const [showAnimated, setShowAnimated] = useState<boolean>(false)
+  const [showBulkCSV, setShowBulkCSV] = useState<boolean>(false)
+  const [showBrandKits, setShowBrandKits] = useState<boolean>(false)
+  const [showScanner, setShowScanner] = useState<boolean>(false)
+  const [showAnalytics, setShowAnalytics] = useState<boolean>(false)
+  const [showDynamicQR, setShowDynamicQR] = useState<boolean>(false)
+
   // Pet ID advanced toggle
   const [showPetAdvanced, setShowPetAdvanced] = useState<boolean>(false)
 
   // Customization advanced toggle
   const [showCustomizationAdvanced, setShowCustomizationAdvanced] = useState<boolean>(false)
 
-  // Load history and palettes on mount
+  // Load history, palettes, and templates on mount
   useEffect(() => {
     setHistory(getHistory())
     setAllPalettes(getAllPalettes())
+    setTemplates(getTemplates())
   }, [])
+
+  // Keyboard shortcuts
+  const shortcuts: KeyboardShortcut[] = [
+    {
+      key: 'g',
+      ctrlOrCmd: true,
+      description: 'Generate QR Code',
+      action: () => {
+        if (content) generateQR()
+      }
+    },
+    {
+      key: 's',
+      ctrlOrCmd: true,
+      description: 'Download PNG',
+      action: () => {
+        if (qrDataUrl) downloadQR('png')
+      }
+    },
+    {
+      key: 'd',
+      ctrlOrCmd: true,
+      description: 'Download All Formats',
+      action: () => {
+        if (qrDataUrl) downloadAllFormats()
+      }
+    },
+    {
+      key: 'p',
+      ctrlOrCmd: true,
+      description: 'Print QR Code',
+      action: () => {
+        if (qrDataUrl) openPrintView()
+      }
+    },
+    {
+      key: 'k',
+      ctrlOrCmd: true,
+      description: 'Toggle Shortcuts Help',
+      action: () => setShowShortcuts(!showShortcuts)
+    },
+    {
+      key: '?',
+      shift: true,
+      description: 'Show Shortcuts Help',
+      action: () => setShowShortcuts(true)
+    }
+  ]
+
+  useKeyboardShortcuts(shortcuts)
 
   useEffect(() => {
     let newContent = ""
@@ -355,6 +460,12 @@ export default function QRCodeGenerator() {
         rotation: gradientRotation,
       };
 
+      const eyeColors: EyeColors | undefined = customEyeColors ? {
+        topLeft: eyeColorTopLeft,
+        topRight: eyeColorTopRight,
+        bottomLeft: eyeColorBottomLeft,
+      } : undefined;
+
       const options: QRCodeOptions = {
         content,
         errorCorrectionLevel: errorLevel,
@@ -369,11 +480,42 @@ export default function QRCodeGenerator() {
         frameStyle,
         frameText: frameText || undefined,
         transparentBackground: transparentBg,
+        eyeColors,
+        backgroundImageUrl: backgroundImageUrl || undefined,
+        backgroundImageOpacity,
       }
 
       const result = await generateQRCode(options)
       setQrDataUrl(result.dataUrl)
-      setQrSvg(result.svg)
+
+      // Generate styled SVG with all customizations
+      const styledSvg = await generateStyledSVG({
+        content,
+        errorCorrectionLevel: errorLevel,
+        size,
+        foregroundColor: fgColor,
+        backgroundColor: bgColor,
+        margin,
+        style: qrStyle,
+        gradient: gradientConfig,
+        finderPattern,
+        eyeColors,
+        transparentBackground: transparentBg,
+      })
+      setQrSvg(styledSvg)
+
+      // Validate QR code quality
+      const validation = validateQRCode(
+        fgColor,
+        bgColor,
+        size,
+        errorLevel,
+        0.2, // default logo size (20%)
+        !!logoUrl,
+        content.length
+      )
+      setValidationResult(validation)
+      setShowValidation(true)
 
       // Save to history
       saveToHistory({
@@ -400,16 +542,67 @@ export default function QRCodeGenerator() {
     }
   }, [content, errorLevel, size, fgColor, bgColor, margin, logoUrl, qrStyle, qrType,
       gradientEnabled, gradientType, gradientColorStart, gradientColorEnd, gradientRotation,
-      finderPattern, frameStyle, frameText, transparentBg])
+      finderPattern, frameStyle, frameText, transparentBg,
+      customEyeColors, eyeColorTopLeft, eyeColorTopRight, eyeColorBottomLeft,
+      backgroundImageUrl, backgroundImageOpacity])
 
   // Removed auto-generation - now requires button click
 
-  const downloadQR = (format: "png" | "svg" | "pdf") => {
+  const downloadQR = (format: "png" | "svg" | "pdf" | "jpeg" | "webp") => {
     if (format === "png" && qrDataUrl) {
       const link = document.createElement("a")
       link.href = qrDataUrl
       link.download = `qrcode-${Date.now()}.png`
       link.click()
+    } else if (format === "jpeg" && qrDataUrl) {
+      // Convert PNG to JPEG
+      const canvas = document.createElement("canvas")
+      const img = new Image()
+      img.onload = () => {
+        canvas.width = img.width
+        canvas.height = img.height
+        const ctx = canvas.getContext("2d")
+        if (ctx) {
+          // Fill white background for JPEG
+          ctx.fillStyle = "#ffffff"
+          ctx.fillRect(0, 0, canvas.width, canvas.height)
+          ctx.drawImage(img, 0, 0)
+          canvas.toBlob((blob) => {
+            if (blob) {
+              const url = URL.createObjectURL(blob)
+              const link = document.createElement("a")
+              link.href = url
+              link.download = `qrcode-${Date.now()}.jpg`
+              link.click()
+              URL.revokeObjectURL(url)
+            }
+          }, "image/jpeg", 0.95)
+        }
+      }
+      img.src = qrDataUrl
+    } else if (format === "webp" && qrDataUrl) {
+      // Convert PNG to WebP
+      const canvas = document.createElement("canvas")
+      const img = new Image()
+      img.onload = () => {
+        canvas.width = img.width
+        canvas.height = img.height
+        const ctx = canvas.getContext("2d")
+        if (ctx) {
+          ctx.drawImage(img, 0, 0)
+          canvas.toBlob((blob) => {
+            if (blob) {
+              const url = URL.createObjectURL(blob)
+              const link = document.createElement("a")
+              link.href = url
+              link.download = `qrcode-${Date.now()}.webp`
+              link.click()
+              URL.revokeObjectURL(url)
+            }
+          }, "image/webp", 0.95)
+        }
+      }
+      img.src = qrDataUrl
     } else if (format === "svg" && qrSvg) {
       const blob = new Blob([qrSvg], { type: "image/svg+xml" })
       const url = URL.createObjectURL(blob)
@@ -420,6 +613,112 @@ export default function QRCodeGenerator() {
       URL.revokeObjectURL(url)
     } else if (format === "pdf" && qrDataUrl) {
       generatePDF(qrDataUrl, `qrcode-${Date.now()}.pdf`)
+    }
+  }
+
+  const shareQRCode = async () => {
+    if (!qrDataUrl) return
+
+    try {
+      // Convert data URL to blob
+      const response = await fetch(qrDataUrl)
+      const blob = await response.blob()
+      const file = new File([blob], `qrcode-${Date.now()}.png`, { type: 'image/png' })
+
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({
+          files: [file],
+          title: 'QR Code',
+          text: `QR Code for ${qrType}`,
+        })
+      } else {
+        // Fallback: copy to clipboard
+        try {
+          const item = new ClipboardItem({ 'image/png': blob })
+          await navigator.clipboard.write([item])
+          alert('QR Code copied to clipboard!')
+        } catch {
+          alert('Sharing not supported on this device. Please use download instead.')
+        }
+      }
+    } catch (error) {
+      console.error('Error sharing:', error)
+      alert('Unable to share. Please use download instead.')
+    }
+  }
+
+  const downloadAllFormats = () => {
+    if (!qrDataUrl) return
+
+    // Download PNG
+    downloadQR("png")
+
+    // Download SVG with a small delay
+    setTimeout(() => downloadQR("svg"), 300)
+
+    // Download PDF with a small delay
+    setTimeout(() => downloadQR("pdf"), 600)
+  }
+
+  const saveAsTemplate = () => {
+    if (!templateName.trim()) {
+      alert('Please enter a template name')
+      return
+    }
+
+    const template: Omit<QRTemplate, 'id' | 'timestamp'> = {
+      name: templateName,
+      type: qrType,
+      options: {
+        errorLevel,
+        size,
+        fgColor,
+        bgColor,
+        margin,
+        style: qrStyle,
+        finderPattern,
+        frameStyle,
+        frameText: frameText || undefined,
+        transparentBg,
+        gradientEnabled,
+        gradientType,
+        gradientColorStart,
+        gradientColorEnd,
+        gradientRotation,
+      },
+      contentPreview: content ? `${qrType}: ${content.substring(0, 50)}${content.length > 50 ? '...' : ''}` : undefined
+    }
+
+    saveTemplate(template)
+    setTemplates(getTemplates())
+    setTemplateName('')
+    alert(`Template "${templateName}" saved successfully!`)
+  }
+
+  const loadFromTemplate = (template: QRTemplate) => {
+    setErrorLevel(template.options.errorLevel)
+    setSize(template.options.size)
+    setFgColor(template.options.fgColor)
+    setBgColor(template.options.bgColor)
+    setMargin(template.options.margin)
+    setQrStyle(template.options.style)
+    setFinderPattern(template.options.finderPattern)
+    setFrameStyle(template.options.frameStyle)
+    setFrameText(template.options.frameText || '')
+    setTransparentBg(template.options.transparentBg)
+    setGradientEnabled(template.options.gradientEnabled)
+    if (template.options.gradientType) setGradientType(template.options.gradientType)
+    if (template.options.gradientColorStart) setGradientColorStart(template.options.gradientColorStart)
+    if (template.options.gradientColorEnd) setGradientColorEnd(template.options.gradientColorEnd)
+    if (template.options.gradientRotation !== undefined) setGradientRotation(template.options.gradientRotation)
+    setQrType(template.type)
+    setShowTemplates(false)
+  }
+
+  const handleDeleteTemplate = (id: string) => {
+    if (confirm('Delete this template?')) {
+      deleteTemplate(id)
+      setTemplates(getTemplates())
     }
   }
 
@@ -1791,8 +2090,10 @@ export default function QRCodeGenerator() {
                       onChange={(e) => setQrStyle(e.target.value as QRStyle)}
                     >
                       <option value="squares">Squares (Classic)</option>
-                      <option value="dots">Dots (Rounded)</option>
+                      <option value="dots">Dots (Circular)</option>
                       <option value="rounded">Rounded Squares</option>
+                      <option value="extra-rounded">Extra Rounded</option>
+                      <option value="classy">Classy (Vertical)</option>
                     </Select>
                   </div>
 
@@ -1919,6 +2220,100 @@ export default function QRCodeGenerator() {
                   </div>
 
                   <div className="border-t pt-4 space-y-3">
+                    <div className="flex items-center gap-2">
+                      <input
+                        id="custom-eye-colors"
+                        type="checkbox"
+                        checked={customEyeColors}
+                        onChange={(e) => setCustomEyeColors(e.target.checked)}
+                        className="cursor-pointer"
+                      />
+                      <Label htmlFor="custom-eye-colors" className="cursor-pointer flex items-center gap-2">
+                        <Palette className="h-4 w-4" />
+                        Custom Eye/Corner Colors
+                      </Label>
+                    </div>
+                    {customEyeColors && (
+                      <div className="space-y-3 pl-6 border-l-2">
+                        <div className="grid grid-cols-3 gap-3">
+                          <div>
+                            <Label htmlFor="eye-color-tl" className="text-xs">Top Left</Label>
+                            <Input
+                              id="eye-color-tl"
+                              type="color"
+                              value={eyeColorTopLeft}
+                              onChange={(e) => setEyeColorTopLeft(e.target.value)}
+                              className="h-10"
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="eye-color-tr" className="text-xs">Top Right</Label>
+                            <Input
+                              id="eye-color-tr"
+                              type="color"
+                              value={eyeColorTopRight}
+                              onChange={(e) => setEyeColorTopRight(e.target.value)}
+                              className="h-10"
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="eye-color-bl" className="text-xs">Bottom Left</Label>
+                            <Input
+                              id="eye-color-bl"
+                              type="color"
+                              value={eyeColorBottomLeft}
+                              onChange={(e) => setEyeColorBottomLeft(e.target.value)}
+                              className="h-10"
+                            />
+                          </div>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          Customize the three corner finder patterns with different colors
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="border-t pt-4 space-y-3">
+                    <Label className="flex items-center gap-2">
+                      <ImageIcon className="h-4 w-4" />
+                      Background Image (Optional)
+                    </Label>
+                    <DragDropUpload
+                      onFileSelect={(file) => {
+                        compressImage(file, 800, 800, 0.9)
+                          .then((compressed) => {
+                            setBackgroundImageUrl(compressed)
+                          })
+                          .catch((error) => {
+                            console.error('Error compressing image:', error)
+                            alert('Failed to compress image. Please try a different image.')
+                          })
+                      }}
+                      currentImage={backgroundImageUrl}
+                      onClear={() => setBackgroundImageUrl("")}
+                      maxSize={5}
+                      label="Background Image"
+                    />
+                    {backgroundImageUrl && (
+                      <div>
+                        <Label htmlFor="bg-opacity">Background Blend: {Math.round(backgroundImageOpacity * 100)}%</Label>
+                        <Slider
+                          id="bg-opacity"
+                          value={backgroundImageOpacity}
+                          onValueChange={setBackgroundImageOpacity}
+                          min={0.1}
+                          max={0.9}
+                          step={0.1}
+                        />
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Higher values = lighter background, better scannability
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="border-t pt-4 space-y-3">
                     <Label>Frame & Text</Label>
                     <div>
                       <Label htmlFor="frame-style">Frame Style</Label>
@@ -1949,65 +2344,46 @@ export default function QRCodeGenerator() {
 
                   <div className="border-t pt-4 space-y-3">
                     <Label>{qrType === 'pet' ? 'Add Image (Optional - Add Last)' : 'Logo (Optional - Add Last)'}</Label>
-                    <div className="space-y-2">
-                      <div>
-                        <Label htmlFor="logo-file" className="text-sm font-normal text-muted-foreground">
-                          Upload Image
-                        </Label>
-                        <Input
-                          id="logo-file"
-                          type="file"
-                          accept="image/*"
-                          onChange={(e) => {
-                            const file = e.target.files?.[0]
-                            if (file) {
-                              // Higher quality for logo since it's just overlaid, not encoded in QR data
-                              compressImage(file, 300, 300, 0.9)
-                                .then((compressed) => {
-                                  setLogoUrl(compressed)
-                                })
-                                .catch((error) => {
-                                  console.error('Error compressing image:', error)
-                                  alert('Failed to compress image. Please try a different image.')
-                                })
-                            }
-                          }}
-                          className="cursor-pointer"
-                        />
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <div className="flex-1 border-t" />
-                        <span className="text-xs text-muted-foreground">OR</span>
-                        <div className="flex-1 border-t" />
-                      </div>
-                      <div>
-                        <Label htmlFor="logo-url" className="text-sm font-normal text-muted-foreground">
-                          Image URL
-                        </Label>
-                        <Input
-                          id="logo-url"
-                          type="url"
-                          placeholder="https://example.com/logo.png"
-                          value={logoUrl}
-                          onChange={(e) => setLogoUrl(e.target.value)}
-                        />
-                      </div>
-                      {logoUrl && (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setLogoUrl("")}
-                          className="w-full"
-                        >
-                          {qrType === 'pet' ? 'Clear Image' : 'Clear Logo'}
-                        </Button>
-                      )}
+
+                    <DragDropUpload
+                      onFileSelect={(file) => {
+                        compressImage(file, 300, 300, 0.9)
+                          .then((compressed) => {
+                            setLogoUrl(compressed)
+                          })
+                          .catch((error) => {
+                            console.error('Error compressing image:', error)
+                            alert('Failed to compress image. Please try a different image.')
+                          })
+                      }}
+                      currentImage={logoUrl}
+                      onClear={() => setLogoUrl("")}
+                      label={qrType === 'pet' ? 'Upload Pet Image' : 'Upload Logo'}
+                    />
+
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1 border-t" />
+                      <span className="text-xs text-muted-foreground">OR</span>
+                      <div className="flex-1 border-t" />
                     </div>
+
+                    <div>
+                      <Label htmlFor="logo-url" className="text-sm font-normal text-muted-foreground">
+                        Image URL
+                      </Label>
+                      <Input
+                        id="logo-url"
+                        type="url"
+                        placeholder="https://example.com/logo.png"
+                        value={logoUrl}
+                        onChange={(e) => setLogoUrl(e.target.value)}
+                      />
+                    </div>
+
                     <p className="text-xs text-muted-foreground">
                       {qrType === 'pet'
-                        ? 'Upload last - Image appears in center of QR code'
-                        : 'Upload last - Logo appears in center (works best with high error correction)'}
+                        ? 'Image appears in center of QR code'
+                        : 'Logo appears in center (works best with high error correction)'}
                     </p>
                   </div>
                 </div>
@@ -2048,26 +2424,130 @@ export default function QRCodeGenerator() {
                 )}
                 {qrDataUrl ? (
                   <>
-                    <div className="p-8 bg-white rounded-lg shadow-lg">
-                      <img src={qrDataUrl} alt="QR Code" className="max-w-full" />
+                    <div className="w-full space-y-3">
+                      {/* SVG/PNG Toggle */}
+                      <div className="flex items-center justify-center gap-2">
+                        <Button
+                          variant={!showSvgPreview ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => setShowSvgPreview(false)}
+                          className="gap-2"
+                        >
+                          <ImageIcon className="h-4 w-4" />
+                          PNG Preview
+                        </Button>
+                        <Button
+                          variant={showSvgPreview ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => setShowSvgPreview(true)}
+                          className="gap-2"
+                        >
+                          <FileText className="h-4 w-4" />
+                          SVG Preview
+                        </Button>
+                      </div>
+
+                      {/* QR Code Display */}
+                      <div className="p-8 bg-white rounded-lg shadow-lg flex items-center justify-center">
+                        {showSvgPreview && qrSvg ? (
+                          <div dangerouslySetInnerHTML={{ __html: qrSvg }} className="max-w-full" />
+                        ) : (
+                          <img src={qrDataUrl} alt="QR Code" className="max-w-full" />
+                        )}
+                      </div>
+
+                      {showSvgPreview && qrSvg && (
+                        <div className="text-center text-sm text-muted-foreground">
+                          <p>✨ Styled SVG with gradients, custom shapes, and eye colors</p>
+                          <p className="text-xs mt-1">Scalable vector format - perfect for print and web</p>
+                        </div>
+                      )}
                     </div>
-                    <div className="flex flex-wrap gap-2 justify-center">
-                      <Button onClick={() => downloadQR("png")} className="gap-2">
-                        <Download className="h-4 w-4" />
-                        PNG
-                      </Button>
-                      <Button onClick={() => downloadQR("svg")} variant="outline" className="gap-2">
-                        <Download className="h-4 w-4" />
-                        SVG
-                      </Button>
-                      <Button onClick={() => downloadQR("pdf")} variant="outline" className="gap-2">
-                        <FileText className="h-4 w-4" />
-                        PDF
-                      </Button>
-                      <Button onClick={openPrintView} variant="outline" className="gap-2">
-                        <Printer className="h-4 w-4" />
-                        Print
-                      </Button>
+
+                    <div className="space-y-2">
+                      <div className="flex gap-2">
+                        <Button onClick={downloadAllFormats} className="flex-1 gap-2" size="lg">
+                          <PackageIcon className="h-5 w-5" />
+                          Download All
+                        </Button>
+                        <Button onClick={shareQRCode} variant="secondary" className="flex-1 gap-2" size="lg">
+                          <Share2 className="h-5 w-5" />
+                          Share
+                        </Button>
+                      </div>
+                      <div className="flex flex-wrap gap-2 justify-center">
+                        <Button onClick={() => downloadQR("png")} variant="outline" className="gap-2" size="sm">
+                          <Download className="h-4 w-4" />
+                          PNG
+                        </Button>
+                        <Button onClick={() => downloadQR("jpeg")} variant="outline" className="gap-2" size="sm">
+                          <ImageIcon className="h-4 w-4" />
+                          JPEG
+                        </Button>
+                        <Button onClick={() => downloadQR("webp")} variant="outline" className="gap-2" size="sm">
+                          <ImageIcon className="h-4 w-4" />
+                          WebP
+                        </Button>
+                        <Button onClick={() => downloadQR("svg")} variant="outline" className="gap-2" size="sm">
+                          <Download className="h-4 w-4" />
+                          SVG
+                        </Button>
+                        <Button onClick={() => downloadQR("pdf")} variant="outline" className="gap-2" size="sm">
+                          <FileText className="h-4 w-4" />
+                          PDF
+                        </Button>
+                        <Button onClick={() => setShowPresetExport(true)} variant="outline" className="gap-2" size="sm">
+                          <ImageIcon className="h-4 w-4" />
+                          Preset Sizes
+                        </Button>
+                        <Button onClick={openPrintView} variant="outline" className="gap-2" size="sm">
+                          <Printer className="h-4 w-4" />
+                          Print
+                        </Button>
+                        <Button onClick={() => setShowShortcuts(true)} variant="outline" className="gap-2" size="sm">
+                          <Keyboard className="h-4 w-4" />
+                          Shortcuts
+                        </Button>
+                      </div>
+
+                      {/* Advanced Features */}
+                      <div className="pt-4 border-t">
+                        <p className="text-xs text-muted-foreground mb-2 text-center">Advanced Tools</p>
+                        <div className="flex flex-wrap gap-2 justify-center">
+                          <Button onClick={() => setShowPrintTemplates(true)} variant="secondary" className="gap-2" size="sm">
+                            <CreditCard className="h-4 w-4" />
+                            Print Templates
+                          </Button>
+                          <Button onClick={() => setShowComparison(true)} variant="secondary" className="gap-2" size="sm">
+                            <GitCompare className="h-4 w-4" />
+                            Compare Styles
+                          </Button>
+                          <Button onClick={() => setShowAnimated(true)} variant="secondary" className="gap-2" size="sm">
+                            <Zap className="h-4 w-4" />
+                            Animated QR
+                          </Button>
+                          <Button onClick={() => setShowBulkCSV(true)} variant="secondary" className="gap-2" size="sm">
+                            <FileSpreadsheet className="h-4 w-4" />
+                            Bulk CSV
+                          </Button>
+                          <Button onClick={() => setShowBrandKits(true)} variant="secondary" className="gap-2" size="sm">
+                            <Palette className="h-4 w-4" />
+                            Brand Kits
+                          </Button>
+                          <Button onClick={() => setShowScanner(true)} variant="secondary" className="gap-2" size="sm">
+                            <Scan className="h-4 w-4" />
+                            Scanner
+                          </Button>
+                          <Button onClick={() => setShowAnalytics(true)} variant="secondary" className="gap-2" size="sm">
+                            <BarChart3 className="h-4 w-4" />
+                            Analytics
+                          </Button>
+                          <Button onClick={() => setShowDynamicQR(true)} variant="secondary" className="gap-2" size="sm">
+                            <RefreshCw className="h-4 w-4" />
+                            Dynamic QR
+                          </Button>
+                        </div>
+                      </div>
                     </div>
                   </>
                 ) : (
@@ -2080,56 +2560,246 @@ export default function QRCodeGenerator() {
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <div>
-                <CardTitle>History</CardTitle>
-                <CardDescription>Your recently generated QR codes</CardDescription>
-              </div>
-              {history.length > 0 && (
+          {/* QR Code Quality Validator */}
+          {validationResult && (
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle>Quality Check</CardTitle>
+                  <CardDescription>Scannability analysis and recommendations</CardDescription>
+                </div>
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={handleClearHistory}
+                  onClick={() => setShowValidation(!showValidation)}
                   className="gap-2"
                 >
-                  <Trash2 className="h-4 w-4" />
-                  Clear
+                  <Eye className="h-4 w-4" />
+                  {showValidation ? 'Hide' : 'Show'}
+                </Button>
+              </CardHeader>
+              {showValidation && (
+                <CardContent className="space-y-4">
+                  {/* Overall Score */}
+                  <div className="text-center p-4 border-2 rounded-lg bg-muted/30">
+                    <div className="flex items-center justify-center gap-3 mb-2">
+                      <div className={`text-4xl font-bold ${getQualityRating(validationResult.overallScore).color}`}>
+                        {validationResult.overallScore}
+                      </div>
+                      <div className="text-left">
+                        <p className={`text-lg font-semibold ${getQualityRating(validationResult.overallScore).color}`}>
+                          {getQualityRating(validationResult.overallScore).rating}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          Overall Quality
+                        </p>
+                      </div>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      {getQualityRating(validationResult.overallScore).description}
+                    </p>
+                  </div>
+
+                  {/* Detailed Metrics */}
+                  <div className="space-y-3">
+                    {/* Contrast */}
+                    <div className="p-3 border rounded-lg">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          {validationResult.contrast.passed ? (
+                            <CheckCircle2 className="h-4 w-4 text-green-600" />
+                          ) : (
+                            <XCircle className="h-4 w-4 text-red-600" />
+                          )}
+                          <span className="font-medium text-sm">Contrast Ratio</span>
+                        </div>
+                        <span className="text-sm font-mono">{validationResult.contrast.ratio}:1</span>
+                      </div>
+                      <div className="w-full bg-muted rounded-full h-2">
+                        <div
+                          className={`h-2 rounded-full ${validationResult.contrast.passed ? 'bg-green-600' : 'bg-red-600'}`}
+                          style={{ width: `${Math.min(100, (validationResult.contrast.ratio / 7) * 100)}%` }}
+                        />
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Minimum 3:1 required, 7:1 excellent
+                      </p>
+                    </div>
+
+                    {/* Size & Distance */}
+                    <div className="p-3 border rounded-lg">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Info className="h-4 w-4 text-blue-600" />
+                        <span className="font-medium text-sm">Scan Distance</span>
+                      </div>
+                      <p className="text-sm">
+                        Can be scanned from: <span className="font-semibold">{validationResult.size.recommendedDistance}</span>
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Module size: {validationResult.size.moduleSize}px
+                      </p>
+                    </div>
+
+                    {/* Logo Warning */}
+                    {validationResult.logo.percentageOfQR > 0 && (
+                      <div className="p-3 border rounded-lg">
+                        <div className="flex items-center gap-2 mb-2">
+                          {validationResult.logo.warning ? (
+                            <AlertCircle className="h-4 w-4 text-amber-600" />
+                          ) : (
+                            <CheckCircle2 className="h-4 w-4 text-green-600" />
+                          )}
+                          <span className="font-medium text-sm">Logo Size</span>
+                        </div>
+                        <p className="text-sm">
+                          {validationResult.logo.percentageOfQR}% of QR code
+                        </p>
+                        {validationResult.logo.warning && (
+                          <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+                            {validationResult.logo.warning}
+                          </p>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Error Correction */}
+                    <div className="p-3 border rounded-lg">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Info className="h-4 w-4 text-blue-600" />
+                        <span className="font-medium text-sm">Error Correction</span>
+                      </div>
+                      <p className="text-sm">
+                        Level {validationResult.errorCorrection.level}: {validationResult.errorCorrection.capacity}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {validationResult.errorCorrection.recommendation}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Issues & Recommendations */}
+                  {(validationResult.scannability.issues.length > 0 || validationResult.scannability.recommendations.length > 0) && (
+                    <div className="space-y-2 pt-2 border-t">
+                      {validationResult.scannability.issues.length > 0 && (
+                        <div>
+                          <p className="text-sm font-semibold text-red-600 dark:text-red-400 mb-1">Issues:</p>
+                          <ul className="space-y-1">
+                            {validationResult.scannability.issues.map((issue, idx) => (
+                              <li key={idx} className="text-xs text-red-600 dark:text-red-400 flex items-start gap-2">
+                                <XCircle className="h-3 w-3 mt-0.5 flex-shrink-0" />
+                                <span>{issue}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                      {validationResult.scannability.recommendations.length > 0 && (
+                        <div>
+                          <p className="text-sm font-semibold text-blue-600 dark:text-blue-400 mb-1">Recommendations:</p>
+                          <ul className="space-y-1">
+                            {validationResult.scannability.recommendations.map((rec, idx) => (
+                              <li key={idx} className="text-xs text-blue-600 dark:text-blue-400 flex items-start gap-2">
+                                <AlertCircle className="h-3 w-3 mt-0.5 flex-shrink-0" />
+                                <span>{rec}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </CardContent>
+              )}
+            </Card>
+          )}
+
+          <Card>
+            <CardHeader>
+              <CardTitle>History & Organization</CardTitle>
+              <CardDescription>Manage your QR code library with search, tags, and favorites</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button
+                onClick={() => setShowHistory(true)}
+                className="w-full gap-2"
+                size="lg"
+              >
+                <History className="h-5 w-5" />
+                Open History Manager ({history.length} codes)
+              </Button>
+              <p className="text-xs text-muted-foreground mt-2 text-center">
+                Search, filter, tag, and organize up to 100 QR codes
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle>Templates</CardTitle>
+                <CardDescription>Save and reuse QR code settings</CardDescription>
+              </div>
+              {qrDataUrl && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowTemplates(!showTemplates)}
+                  className="gap-2"
+                >
+                  <FolderOpen className="h-4 w-4" />
+                  {showTemplates ? 'Hide' : 'Manage'}
                 </Button>
               )}
             </CardHeader>
             <CardContent>
-              {history.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  <History className="h-12 w-12 mx-auto mb-2 opacity-20" />
-                  <p className="text-sm">No history yet</p>
-                  <p className="text-xs">Generated QR codes will appear here</p>
-                </div>
-              ) : (
-                <div className="space-y-3 max-h-[400px] overflow-y-auto">
-                  {history.map((item) => (
-                    <div
-                      key={item.id}
-                      className="flex items-center gap-3 p-3 border rounded-lg hover:bg-accent cursor-pointer group"
-                      onClick={() => loadFromHistory(item)}
-                    >
-                      <img
-                        src={item.preview}
-                        alt="QR Preview"
-                        className="w-16 h-16 rounded border"
+              {qrDataUrl && (
+                <div className="space-y-3 mb-4 p-3 border rounded-lg bg-muted/30">
+                  <div>
+                    <Label htmlFor="template-name">Save Current Settings as Template</Label>
+                    <div className="flex gap-2 mt-2">
+                      <Input
+                        id="template-name"
+                        placeholder="Template name (e.g., My Brand QR)"
+                        value={templateName}
+                        onChange={(e) => setTemplateName(e.target.value)}
                       />
+                      <Button onClick={saveAsTemplate} className="gap-2 whitespace-nowrap">
+                        <Save className="h-4 w-4" />
+                        Save
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {showTemplates && templates.length > 0 ? (
+                <div className="space-y-2">
+                  <p className="text-sm text-muted-foreground mb-3">
+                    Click to load template settings
+                  </p>
+                  {templates.map((template) => (
+                    <div
+                      key={template.id}
+                      className="flex items-center gap-3 p-3 border rounded-lg hover:bg-accent cursor-pointer group"
+                      onClick={() => loadFromTemplate(template)}
+                    >
                       <div className="flex-1 min-w-0">
-                        <p className="font-medium text-sm capitalize">{item.type}</p>
-                        <p className="text-xs text-muted-foreground truncate">
-                          {new Date(item.timestamp).toLocaleString()}
+                        <p className="font-medium text-sm">{template.name}</p>
+                        <p className="text-xs text-muted-foreground capitalize">
+                          {template.type} • {new Date(template.timestamp).toLocaleDateString()}
                         </p>
+                        {template.contentPreview && (
+                          <p className="text-xs text-muted-foreground truncate mt-1">
+                            {template.contentPreview}
+                          </p>
+                        )}
                       </div>
                       <Button
                         variant="ghost"
                         size="sm"
                         onClick={(e) => {
                           e.stopPropagation()
-                          handleDeleteHistoryItem(item.id)
+                          handleDeleteTemplate(template.id)
                         }}
                         className="opacity-0 group-hover:opacity-100 transition-opacity"
                       >
@@ -2137,6 +2807,18 @@ export default function QRCodeGenerator() {
                       </Button>
                     </div>
                   ))}
+                </div>
+              ) : showTemplates ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Save className="h-12 w-12 mx-auto mb-2 opacity-20" />
+                  <p className="text-sm">No templates saved yet</p>
+                  <p className="text-xs">Save your favorite QR code settings above</p>
+                </div>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  <FolderOpen className="h-12 w-12 mx-auto mb-2 opacity-20" />
+                  <p className="text-sm">Templates saved: {templates.length}</p>
+                  <p className="text-xs">Generate a QR code to save settings</p>
                 </div>
               )}
             </CardContent>
@@ -2155,7 +2837,14 @@ export default function QRCodeGenerator() {
                 <strong>Features:</strong>
               </p>
               <ul className="list-disc list-inside space-y-1 ml-2">
-                <li>13 QR code types (URL, Text, Social Media, Location/Maps, Pet ID, WiFi, vCard, Email, SMS, Phone, Calendar Events, Cryptocurrency, App Store)</li>
+                <li>17 QR code types (URL, Text, WhatsApp, Meeting Links, PayPal, Media, Social Media, Location/Maps, Pet ID, WiFi, vCard, Email, SMS, Phone, Calendar Events, Cryptocurrency, App Store)</li>
+                <li>28+ color palette presets across 6 categories (Classic, Professional, Vibrant, Gradient, Pastel, Brand)</li>
+                <li>Enhanced vCard with social media links, full address, birthday</li>
+                <li>Save & load custom templates for reusable settings</li>
+                <li>Drag & drop logo/image upload</li>
+                <li>Download all formats at once (PNG, SVG, PDF)</li>
+                <li>Batch QR code generation from CSV</li>
+                <li>Multi-QR print layout for mass production</li>
                 <li>3 QR visual styles (Squares, Dots, Rounded)</li>
                 <li>4 custom corner patterns (Square, Rounded, Dots, Extra Rounded)</li>
                 <li>Gradient support (Linear & Radial)</li>
@@ -2165,7 +2854,6 @@ export default function QRCodeGenerator() {
                 <li>Customizable colors, sizes, and margins</li>
                 <li>Adjustable error correction levels</li>
                 <li>Logo embedding support</li>
-                <li>Download as PNG, SVG, or PDF</li>
                 <li>Print-optimized view</li>
                 <li>Local history (last 10 QR codes)</li>
                 <li>Quick example templates</li>
@@ -2176,6 +2864,171 @@ export default function QRCodeGenerator() {
           </Card>
         </div>
       </div>
+
+      {/* Preset Export Modal */}
+      {showPresetExport && qrDataUrl && (
+        <PresetExport
+          qrDataUrl={qrDataUrl}
+          onClose={() => setShowPresetExport(false)}
+        />
+      )}
+
+      {/* Enhanced History Modal */}
+      {showHistory && (
+        <EnhancedHistory
+          onClose={() => {
+            setShowHistory(false)
+            setHistory(getHistory())
+          }}
+          onRestore={loadFromHistory}
+        />
+      )}
+
+      {/* Print Template Designer Modal */}
+      {showPrintTemplates && qrDataUrl && (
+        <PrintTemplateDesigner
+          qrDataUrl={qrDataUrl}
+          onClose={() => setShowPrintTemplates(false)}
+        />
+      )}
+
+      {/* QR Comparison Modal */}
+      {showComparison && content && (
+        <QRComparison
+          content={content}
+          baseOptions={{
+            errorLevel,
+            size,
+            fgColor,
+            bgColor,
+            margin,
+            logoUrl,
+          }}
+          onClose={() => setShowComparison(false)}
+        />
+      )}
+
+      {/* Animated QR Generator Modal */}
+      {showAnimated && (
+        <AnimatedQRGenerator
+          qrOptions={{
+            content,
+            errorCorrectionLevel: errorLevel,
+            size,
+            foregroundColor: fgColor,
+            backgroundColor: bgColor,
+            margin,
+            style: qrStyle,
+            finderPattern,
+          }}
+          onClose={() => setShowAnimated(false)}
+        />
+      )}
+
+      {/* Bulk CSV Generator Modal */}
+      {showBulkCSV && (
+        <BulkCSVGenerator
+          onClose={() => setShowBulkCSV(false)}
+        />
+      )}
+
+      {/* Brand Kit Manager Modal */}
+      {showBrandKits && (
+        <BrandKitManager
+          onClose={() => setShowBrandKits(false)}
+          onApplyKit={(kit) => {
+            setFgColor(kit.colors.foreground)
+            setBgColor(kit.colors.background)
+            setQrStyle(kit.style)
+            setFinderPattern(kit.finderPattern)
+            if (kit.logo) {
+              setLogoUrl(kit.logo)
+            }
+          }}
+        />
+      )}
+
+      {/* Smart QR Scanner Modal */}
+      {showScanner && (
+        <SmartQRScanner
+          onClose={() => setShowScanner(false)}
+          onScanComplete={(data) => {
+            setContent(data)
+            // Try to auto-detect QR type
+            if (data.startsWith('http://') || data.startsWith('https://')) {
+              setQrType('url')
+            } else if (data.startsWith('mailto:')) {
+              setQrType('email')
+            } else if (data.startsWith('WIFI:')) {
+              setQrType('wifi')
+            } else {
+              setQrType('text')
+            }
+          }}
+        />
+      )}
+
+      {/* Analytics Dashboard Modal */}
+      {showAnalytics && (
+        <AnalyticsDashboard
+          onClose={() => setShowAnalytics(false)}
+        />
+      )}
+
+      {/* Dynamic QR Manager Modal */}
+      {showDynamicQR && (
+        <DynamicQRManager
+          onClose={() => setShowDynamicQR(false)}
+          onGenerateQR={(url, name) => {
+            setContent(url)
+            setQrType('url')
+            generateQR()
+          }}
+        />
+      )}
+
+      {/* Keyboard Shortcuts Modal */}
+      {showShortcuts && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setShowShortcuts(false)}>
+          <Card className="w-full max-w-md" onClick={(e) => e.stopPropagation()}>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Keyboard className="h-5 w-5" />
+                  <CardTitle>Keyboard Shortcuts</CardTitle>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowShortcuts(false)}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+              <CardDescription>Power user shortcuts for faster QR code generation</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {shortcuts.map((shortcut, idx) => (
+                  <div key={idx} className="flex items-center justify-between p-2 rounded hover:bg-accent">
+                    <span className="text-sm">{shortcut.description}</span>
+                    <kbd className="px-2 py-1 text-xs font-mono bg-muted border rounded">
+                      {getShortcutDisplay(shortcut)}
+                    </kbd>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-4 p-3 bg-muted rounded-lg">
+                <p className="text-xs text-muted-foreground">
+                  Press <kbd className="px-1 py-0.5 text-xs font-mono bg-background border rounded">?</kbd> or{' '}
+                  <kbd className="px-1 py-0.5 text-xs font-mono bg-background border rounded">Ctrl+K</kbd>{' '}
+                  anytime to toggle this help
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </div>
   )
 }

@@ -2,7 +2,7 @@ import QRCode from 'qrcode';
 import jsPDF from 'jspdf';
 
 export type ErrorCorrectionLevel = 'L' | 'M' | 'Q' | 'H';
-export type QRStyle = 'squares' | 'dots' | 'rounded';
+export type QRStyle = 'squares' | 'dots' | 'rounded' | 'extra-rounded' | 'classy';
 export type FinderPattern = 'square' | 'rounded' | 'dots' | 'extra-rounded';
 export type FrameStyle = 'none' | 'simple' | 'rounded' | 'banner';
 
@@ -12,6 +12,12 @@ export interface GradientConfig {
   colorStart: string;
   colorEnd: string;
   rotation?: number; // degrees, for linear gradient
+}
+
+export interface EyeColors {
+  topLeft?: string;
+  topRight?: string;
+  bottomLeft?: string;
 }
 
 export interface QRCodeOptions {
@@ -29,6 +35,9 @@ export interface QRCodeOptions {
   frameStyle?: FrameStyle;
   frameText?: string;
   transparentBackground?: boolean;
+  eyeColors?: EyeColors;
+  backgroundImageUrl?: string;
+  backgroundImageOpacity?: number;
 }
 
 export interface QRCodeResult {
@@ -52,6 +61,9 @@ export async function generateQRCode(options: QRCodeOptions): Promise<QRCodeResu
     frameStyle = 'none',
     frameText,
     transparentBackground = false,
+    eyeColors,
+    backgroundImageUrl,
+    backgroundImageOpacity = 0.3,
   } = options;
 
   // Calculate size with frame
@@ -106,7 +118,28 @@ export async function generateQRCode(options: QRCodeOptions): Promise<QRCodeResu
   const imageData = tempCtx.getImageData(0, 0, size, size);
 
   // Clear canvas with background
-  if (transparentBackground) {
+  if (backgroundImageUrl) {
+    // Load and draw background image
+    const bgImage = new Image();
+    bgImage.crossOrigin = 'anonymous';
+    await new Promise((resolve, reject) => {
+      bgImage.onload = resolve;
+      bgImage.onerror = reject;
+      bgImage.src = backgroundImageUrl;
+    });
+
+    // Draw background image (cover fit)
+    const scale = Math.max(size / bgImage.width, size / bgImage.height);
+    const scaledWidth = bgImage.width * scale;
+    const scaledHeight = bgImage.height * scale;
+    const offsetX = (size - scaledWidth) / 2;
+    const offsetY = (size - scaledHeight) / 2;
+    ctx.drawImage(bgImage, offsetX, offsetY, scaledWidth, scaledHeight);
+
+    // Apply white overlay with opacity
+    ctx.fillStyle = `rgba(255, 255, 255, ${backgroundImageOpacity})`;
+    ctx.fillRect(0, 0, size, size);
+  } else if (transparentBackground) {
     ctx.clearRect(0, 0, size, totalHeight);
   } else {
     ctx.fillStyle = backgroundColor;
@@ -168,6 +201,16 @@ export async function generateQRCode(options: QRCodeOptions): Promise<QRCodeResu
           ctx.beginPath();
           ctx.roundRect(px, py, moduleSize, moduleSize, radius);
           ctx.fill();
+        } else if (style === 'extra-rounded') {
+          const bigRadius = moduleSize / 2;
+          ctx.beginPath();
+          ctx.roundRect(px, py, moduleSize, moduleSize, bigRadius);
+          ctx.fill();
+        } else if (style === 'classy') {
+          const classyRadius = moduleSize / 3;
+          ctx.beginPath();
+          ctx.roundRect(px, py, moduleSize, moduleSize * 1.1, classyRadius);
+          ctx.fill();
         } else {
           ctx.fillRect(px, py, moduleSize, moduleSize);
         }
@@ -175,15 +218,16 @@ export async function generateQRCode(options: QRCodeOptions): Promise<QRCodeResu
     }
   }
 
-  // Draw custom finder patterns
-  const drawFinderPattern = (x: number, y: number) => {
+  // Draw custom finder patterns with custom colors
+  const drawFinderPattern = (x: number, y: number, customColor?: string) => {
     const px = x * moduleSize;
     const py = y * moduleSize;
     const patternSize = 7 * moduleSize;
+    const eyeColor = customColor || foregroundColor;
 
     if (finderPattern === 'rounded') {
       // Outer square (rounded)
-      ctx.fillStyle = foregroundColor;
+      ctx.fillStyle = eyeColor;
       ctx.beginPath();
       ctx.roundRect(px, py, patternSize, patternSize, moduleSize);
       ctx.fill();
@@ -195,13 +239,13 @@ export async function generateQRCode(options: QRCodeOptions): Promise<QRCodeResu
       ctx.fill();
 
       // Inner square (rounded, foreground)
-      ctx.fillStyle = foregroundColor;
+      ctx.fillStyle = eyeColor;
       ctx.beginPath();
       ctx.roundRect(px + 2 * moduleSize, py + 2 * moduleSize, 3 * moduleSize, 3 * moduleSize, moduleSize / 2);
       ctx.fill();
     } else if (finderPattern === 'dots') {
       // Outer ring of dots
-      ctx.fillStyle = foregroundColor;
+      ctx.fillStyle = eyeColor;
       for (let i = 0; i < 7; i++) {
         for (let j = 0; j < 7; j++) {
           if (i === 0 || i === 6 || j === 0 || j === 6) {
@@ -217,7 +261,7 @@ export async function generateQRCode(options: QRCodeOptions): Promise<QRCodeResu
       ctx.fill();
     } else if (finderPattern === 'extra-rounded') {
       // Very round finder patterns
-      ctx.fillStyle = foregroundColor;
+      ctx.fillStyle = eyeColor;
       ctx.beginPath();
       ctx.roundRect(px, py, patternSize, patternSize, moduleSize * 1.5);
       ctx.fill();
@@ -227,25 +271,25 @@ export async function generateQRCode(options: QRCodeOptions): Promise<QRCodeResu
       ctx.roundRect(px + moduleSize, py + moduleSize, patternSize - 2 * moduleSize, patternSize - 2 * moduleSize, moduleSize);
       ctx.fill();
 
-      ctx.fillStyle = foregroundColor;
+      ctx.fillStyle = eyeColor;
       ctx.beginPath();
       ctx.arc(px + 3.5 * moduleSize, py + 3.5 * moduleSize, 1.5 * moduleSize, 0, 2 * Math.PI);
       ctx.fill();
     } else {
       // Standard square finder pattern
-      ctx.fillStyle = foregroundColor;
+      ctx.fillStyle = eyeColor;
       ctx.fillRect(px, py, patternSize, patternSize);
       ctx.fillStyle = transparentBackground ? 'rgba(255,255,255,0)' : backgroundColor;
       ctx.fillRect(px + moduleSize, py + moduleSize, patternSize - 2 * moduleSize, patternSize - 2 * moduleSize);
-      ctx.fillStyle = foregroundColor;
+      ctx.fillStyle = eyeColor;
       ctx.fillRect(px + 2 * moduleSize, py + 2 * moduleSize, 3 * moduleSize, 3 * moduleSize);
     }
   };
 
-  // Draw the three finder patterns
-  drawFinderPattern(0, 0); // Top-left
-  drawFinderPattern(moduleCount - 7, 0); // Top-right
-  drawFinderPattern(0, moduleCount - 7); // Bottom-left
+  // Draw the three finder patterns with custom colors
+  drawFinderPattern(0, 0, eyeColors?.topLeft); // Top-left
+  drawFinderPattern(moduleCount - 7, 0, eyeColors?.topRight); // Top-right
+  drawFinderPattern(0, moduleCount - 7, eyeColors?.bottomLeft); // Bottom-left
 
   // Add logo if provided
   if (logoUrl) {
