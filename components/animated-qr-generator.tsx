@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
-import { Select } from "@/components/ui/select"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Slider } from "@/components/ui/slider"
 import {
   generateAnimationFrames,
@@ -158,17 +158,18 @@ export default function AnimatedQRGenerator({ qrOptions, onClose }: AnimatedQRGe
               </div>
 
               <div>
-                <Label htmlFor="effect">Animation Effect</Label>
-                <Select
-                  id="effect"
-                  value={effect}
-                  onChange={(e) => setEffect(e.target.value as AnimationEffect)}
-                >
-                  <option value="pulse">Pulse</option>
-                  <option value="fade">Fade</option>
-                  <option value="rotate">Rotate</option>
-                  <option value="bounce">Bounce</option>
-                  <option value="wave">Wave</option>
+                <Label>Animation Effect</Label>
+                <Select value={effect} onValueChange={(v) => setEffect(v as AnimationEffect)}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="pulse">Pulse</SelectItem>
+                    <SelectItem value="fade">Fade</SelectItem>
+                    <SelectItem value="rotate">Rotate</SelectItem>
+                    <SelectItem value="bounce">Bounce</SelectItem>
+                    <SelectItem value="wave">Wave</SelectItem>
+                  </SelectContent>
                 </Select>
                 <p className="text-xs text-muted-foreground mt-1">
                   {getAnimationPreview(effect)}

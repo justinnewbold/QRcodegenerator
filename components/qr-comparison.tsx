@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
-import { Select } from "@/components/ui/select"
+import { SimpleSelect as Select } from "@/components/ui/simple-select"
 import { generateQRCode, type QRStyle, type FinderPattern, type ErrorCorrectionLevel } from "@/lib/qr-generator"
 import { X, Copy, Download } from "lucide-react"
 

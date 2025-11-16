@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Select } from "@/components/ui/select"
+import { SimpleSelect as Select } from "@/components/ui/simple-select"
 import { Button } from "@/components/ui/button"
 import { Slider } from "@/components/ui/slider"
 import {
@@ -47,7 +47,12 @@ import EnhancedHistory from "@/components/enhanced-history"
 import PrintTemplateDesigner from "@/components/print-template-designer"
 import QRComparison from "@/components/qr-comparison"
 import AnimatedQRGenerator from "@/components/animated-qr-generator"
-import { Download, QrCode, Wifi, Mail, Phone, MessageSquare, User, Link2, Heart, Plus, X, AlertTriangle, Info, Calendar, Coins, Smartphone, History, FileText, Printer, Trash2, MapPin, Twitter, Instagram, Linkedin, Facebook, Music, Save, FolderOpen, Package as PackageIcon, CheckCircle2, XCircle, AlertCircle, Eye, Keyboard, Share2, Image as ImageIcon, Palette, CreditCard, GitCompare, Zap } from "lucide-react"
+import BulkCSVGenerator from "@/components/bulk-csv-generator"
+import BrandKitManager from "@/components/brand-kit-manager"
+import SmartQRScanner from "@/components/smart-qr-scanner"
+import AnalyticsDashboard from "@/components/analytics-dashboard"
+import DynamicQRManager from "@/components/dynamic-qr-manager"
+import { Download, QrCode, Wifi, Mail, Phone, MessageSquare, User, Link2, Heart, Plus, X, AlertTriangle, Info, Calendar, Coins, Smartphone, History, FileText, Printer, Trash2, MapPin, Twitter, Instagram, Linkedin, Facebook, Music, Save, FolderOpen, Package as PackageIcon, CheckCircle2, XCircle, AlertCircle, Eye, Keyboard, Share2, Image as ImageIcon, Palette, CreditCard, GitCompare, Zap, FileSpreadsheet, Scan, BarChart3, RefreshCw } from "lucide-react"
 
 export default function QRCodeGenerator() {
   const [qrType, setQrType] = useState<string>("url")
@@ -204,6 +209,11 @@ export default function QRCodeGenerator() {
   const [showPrintTemplates, setShowPrintTemplates] = useState<boolean>(false)
   const [showComparison, setShowComparison] = useState<boolean>(false)
   const [showAnimated, setShowAnimated] = useState<boolean>(false)
+  const [showBulkCSV, setShowBulkCSV] = useState<boolean>(false)
+  const [showBrandKits, setShowBrandKits] = useState<boolean>(false)
+  const [showScanner, setShowScanner] = useState<boolean>(false)
+  const [showAnalytics, setShowAnalytics] = useState<boolean>(false)
+  const [showDynamicQR, setShowDynamicQR] = useState<boolean>(false)
 
   // Pet ID advanced toggle
   const [showPetAdvanced, setShowPetAdvanced] = useState<boolean>(false)
@@ -2516,6 +2526,26 @@ export default function QRCodeGenerator() {
                             <Zap className="h-4 w-4" />
                             Animated QR
                           </Button>
+                          <Button onClick={() => setShowBulkCSV(true)} variant="secondary" className="gap-2" size="sm">
+                            <FileSpreadsheet className="h-4 w-4" />
+                            Bulk CSV
+                          </Button>
+                          <Button onClick={() => setShowBrandKits(true)} variant="secondary" className="gap-2" size="sm">
+                            <Palette className="h-4 w-4" />
+                            Brand Kits
+                          </Button>
+                          <Button onClick={() => setShowScanner(true)} variant="secondary" className="gap-2" size="sm">
+                            <Scan className="h-4 w-4" />
+                            Scanner
+                          </Button>
+                          <Button onClick={() => setShowAnalytics(true)} variant="secondary" className="gap-2" size="sm">
+                            <BarChart3 className="h-4 w-4" />
+                            Analytics
+                          </Button>
+                          <Button onClick={() => setShowDynamicQR(true)} variant="secondary" className="gap-2" size="sm">
+                            <RefreshCw className="h-4 w-4" />
+                            Dynamic QR
+                          </Button>
                         </div>
                       </div>
                     </div>
@@ -2892,6 +2922,68 @@ export default function QRCodeGenerator() {
             finderPattern,
           }}
           onClose={() => setShowAnimated(false)}
+        />
+      )}
+
+      {/* Bulk CSV Generator Modal */}
+      {showBulkCSV && (
+        <BulkCSVGenerator
+          onClose={() => setShowBulkCSV(false)}
+        />
+      )}
+
+      {/* Brand Kit Manager Modal */}
+      {showBrandKits && (
+        <BrandKitManager
+          onClose={() => setShowBrandKits(false)}
+          onApplyKit={(kit) => {
+            setFgColor(kit.colors.foreground)
+            setBgColor(kit.colors.background)
+            setQrStyle(kit.style)
+            setFinderPattern(kit.finderPattern)
+            if (kit.logo) {
+              setLogoUrl(kit.logo)
+            }
+          }}
+        />
+      )}
+
+      {/* Smart QR Scanner Modal */}
+      {showScanner && (
+        <SmartQRScanner
+          onClose={() => setShowScanner(false)}
+          onScanComplete={(data) => {
+            setContent(data)
+            // Try to auto-detect QR type
+            if (data.startsWith('http://') || data.startsWith('https://')) {
+              setQrType('url')
+            } else if (data.startsWith('mailto:')) {
+              setQrType('email')
+            } else if (data.startsWith('WIFI:')) {
+              setQrType('wifi')
+            } else {
+              setQrType('text')
+            }
+          }}
+        />
+      )}
+
+      {/* Analytics Dashboard Modal */}
+      {showAnalytics && (
+        <AnalyticsDashboard
+          onClose={() => setShowAnalytics(false)}
+        />
+      )}
+
+      {/* Dynamic QR Manager Modal */}
+      {showDynamicQR && (
+        <DynamicQRManager
+          onClose={() => setShowDynamicQR(false)}
+          onGenerateQR={(url, name) => {
+            setContent(url)
+            setQrType('url')
+            generateQR()
+          }}
         />
       )}
 

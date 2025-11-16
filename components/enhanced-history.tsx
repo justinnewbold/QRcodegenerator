@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Select } from "@/components/ui/select"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import {
   getHistory,
   deleteHistoryItem,
@@ -258,11 +258,16 @@ export default function EnhancedHistory({ onClose, onRestore }: EnhancedHistoryP
                   className="pl-10"
                 />
               </div>
-              <Select value={selectedType} onChange={(e) => setSelectedType(e.target.value)}>
-                <option value="all">All Types</option>
-                {Object.keys(stats.byType).map(type => (
-                  <option key={type} value={type}>{type} ({stats.byType[type]})</option>
-                ))}
+              <Select value={selectedType} onValueChange={setSelectedType}>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Types</SelectItem>
+                  {Object.keys(stats.byType).map(type => (
+                    <SelectItem key={type} value={type}>{type} ({stats.byType[type]})</SelectItem>
+                  ))}
+                </SelectContent>
               </Select>
               <Button
                 variant={showFavoritesOnly ? "default" : "outline"}
@@ -297,10 +302,15 @@ export default function EnhancedHistory({ onClose, onRestore }: EnhancedHistoryP
             <div className="flex items-center justify-between">
               <div className="flex gap-2 items-center">
                 <Label className="text-sm">Sort:</Label>
-                <Select value={sortBy} onChange={(e) => setSortBy(e.target.value as any)}>
-                  <option value="date">Date</option>
-                  <option value="name">Name</option>
-                  <option value="type">Type</option>
+                <Select value={sortBy} onValueChange={(v) => setSortBy(v as any)}>
+                  <SelectTrigger className="w-[120px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="date">Date</SelectItem>
+                    <SelectItem value="name">Name</SelectItem>
+                    <SelectItem value="type">Type</SelectItem>
+                  </SelectContent>
                 </Select>
                 <Button
                   variant="ghost"

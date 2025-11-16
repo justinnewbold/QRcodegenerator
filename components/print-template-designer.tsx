@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Select } from "@/components/ui/select"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Slider } from "@/components/ui/slider"
 import {
   PRINT_TEMPLATES,
@@ -115,16 +115,21 @@ export default function PrintTemplateDesigner({ qrDataUrl, onClose }: PrintTempl
             <Label>Template</Label>
             <Select
               value={selectedTemplate.id}
-              onChange={(e) => {
-                const template = PRINT_TEMPLATES.find(t => t.id === e.target.value)
+              onValueChange={(value) => {
+                const template = PRINT_TEMPLATES.find(t => t.id === value)
                 if (template) setSelectedTemplate(template)
               }}
             >
-              {categoryTemplates.map(template => (
-                <option key={template.id} value={template.id}>
-                  {template.name} - {template.width}×{template.height}mm
-                </option>
-              ))}
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {categoryTemplates.map(template => (
+                  <SelectItem key={template.id} value={template.id}>
+                    {template.name} - {template.width}×{template.height}mm
+                  </SelectItem>
+                ))}
+              </SelectContent>
             </Select>
             <p className="text-xs text-muted-foreground mt-1">{selectedTemplate.description}</p>
           </div>
