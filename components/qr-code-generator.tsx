@@ -1,7 +1,9 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
+import dynamic from "next/dynamic"
 import { toast } from "sonner"
+import { Spinner } from "@/components/ui/spinner"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Input } from "@/components/ui/input"
@@ -43,16 +45,38 @@ import { validateQRCode, getQualityRating, type QRValidationResult } from "@/lib
 import { generateStyledSVG, optimizeSVG, svgToDataURL } from "@/lib/svg-generator"
 import { useKeyboardShortcuts, getShortcutDisplay, type KeyboardShortcut } from "@/hooks/use-keyboard-shortcuts"
 import DragDropUpload from "@/components/drag-drop-upload"
-import PresetExport from "@/components/preset-export"
-import EnhancedHistory from "@/components/enhanced-history"
-import PrintTemplateDesigner from "@/components/print-template-designer"
-import QRComparison from "@/components/qr-comparison"
-import AnimatedQRGenerator from "@/components/animated-qr-generator"
-import BulkCSVGenerator from "@/components/bulk-csv-generator"
-import BrandKitManager from "@/components/brand-kit-manager"
-import SmartQRScanner from "@/components/smart-qr-scanner"
-import AnalyticsDashboard from "@/components/analytics-dashboard"
-import DynamicQRManager from "@/components/dynamic-qr-manager"
+
+// Dynamically import heavy components for code splitting
+const PresetExport = dynamic(() => import("@/components/preset-export"), {
+  loading: () => <div className="flex items-center justify-center p-8"><Spinner /></div>
+})
+const EnhancedHistory = dynamic(() => import("@/components/enhanced-history"), {
+  loading: () => <div className="flex items-center justify-center p-8"><Spinner /></div>
+})
+const PrintTemplateDesigner = dynamic(() => import("@/components/print-template-designer"), {
+  loading: () => <div className="flex items-center justify-center p-8"><Spinner /></div>
+})
+const QRComparison = dynamic(() => import("@/components/qr-comparison"), {
+  loading: () => <div className="flex items-center justify-center p-8"><Spinner /></div>
+})
+const AnimatedQRGenerator = dynamic(() => import("@/components/animated-qr-generator"), {
+  loading: () => <div className="flex items-center justify-center p-8"><Spinner /></div>
+})
+const BulkCSVGenerator = dynamic(() => import("@/components/bulk-csv-generator"), {
+  loading: () => <div className="flex items-center justify-center p-8"><Spinner /></div>
+})
+const BrandKitManager = dynamic(() => import("@/components/brand-kit-manager"), {
+  loading: () => <div className="flex items-center justify-center p-8"><Spinner /></div>
+})
+const SmartQRScanner = dynamic(() => import("@/components/smart-qr-scanner"), {
+  loading: () => <div className="flex items-center justify-center p-8"><Spinner /></div>
+})
+const AnalyticsDashboard = dynamic(() => import("@/components/analytics-dashboard"), {
+  loading: () => <div className="flex items-center justify-center p-8"><Spinner /></div>
+})
+const DynamicQRManager = dynamic(() => import("@/components/dynamic-qr-manager"), {
+  loading: () => <div className="flex items-center justify-center p-8"><Spinner /></div>
+})
 import { Download, QrCode, Wifi, Mail, Phone, MessageSquare, User, Link2, Heart, Plus, X, AlertTriangle, Info, Calendar, Coins, Smartphone, History, FileText, Printer, Trash2, MapPin, Twitter, Instagram, Linkedin, Facebook, Music, Save, FolderOpen, Package as PackageIcon, CheckCircle2, XCircle, AlertCircle, Eye, Keyboard, Share2, Image as ImageIcon, Palette, CreditCard, GitCompare, Zap, FileSpreadsheet, Scan, BarChart3, RefreshCw, Sun, Moon } from "lucide-react"
 
 export default function QRCodeGenerator() {

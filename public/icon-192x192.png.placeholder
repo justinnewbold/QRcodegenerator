@@ -1,0 +1,2 @@
+This is a placeholder. Generate actual icons using: 
+npx pwa-asset-generator logo.svg public --icon-only --background "#000000"
