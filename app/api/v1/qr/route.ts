@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { validateApiKey, trackApiUsage, hasScope } from '@/lib/api-key'
-import { generateQRCode } from '@/lib/qrcode-generator'
+import { generateQRCode } from '@/lib/qr-generator'
 import { createShortUrl } from '@/lib/url-shortener'
 import { z } from 'zod'
 

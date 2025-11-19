@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Generate the QR code image
-    const { generateQRCode } = await import('@/lib/qrcode-generator')
+    const { generateQRCode } = await import('@/lib/qr-generator')
     const qrImage = await generateQRCode({
       content: data.dynamic && qrCode ? qrCode.dynamicUrl! : data.content,
       foregroundColor: data.customization?.foregroundColor || '#000000',

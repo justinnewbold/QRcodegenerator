@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { generateQRCode } from '@/lib/qrcode-generator'
+import { generateQRCode } from '@/lib/qr-generator'
 import { createShortUrl } from '@/lib/url-shortener'
 
 // Shopify integration for generating product QR codes
