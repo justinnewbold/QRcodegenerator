@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QR Code Generator</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>QR Code Generator</h1>
+    </header>
+
+    <main>
+      <div class="input-group">
+        <label for="content">Content:</label>
+        <textarea
+          id="content"
+          rows="3"
+          placeholder="Enter URL, text, or select from current tab"
+        ></textarea>
+      </div>
+
+      <div class="quick-actions">
+        <button id="useCurrentUrl" class="btn-secondary">
+          Use Current URL
+        </button>
+        <button id="useSelection" class="btn-secondary">
+          Use Selected Text
+        </button>
+      </div>
+
+      <div class="options">
+        <div class="option">
+          <label for="size">Size:</label>
+          <select id="size">
+            <option value="200">200x200</option>
+            <option value="300" selected>300x300</option>
+            <option value="500">500x500</option>
+            <option value="1000">1000x1000</option>
+          </select>
+        </div>
+
+        <div class="option">
+          <label for="errorLevel">Error Correction:</label>
+          <select id="errorLevel">
+            <option value="L">Low</option>
+            <option value="M" selected>Medium</option>
+            <option value="Q">Quartile</option>
+            <option value="H">High</option>
+          </select>
+        </div>
+
+        <div class="option">
+          <label>
+            <input type="checkbox" id="dynamic">
+            Dynamic QR (with tracking)
+          </label>
+        </div>
+      </div>
+
+      <button id="generate" class="btn-primary">
+        Generate QR Code
+      </button>
+
+      <div id="result" class="result hidden">
+        <img id="qrImage" alt="QR Code">
+        <div class="actions">
+          <button id="download" class="btn-secondary">Download</button>
+          <button id="copy" class="btn-secondary">Copy</button>
+          <button id="viewAnalytics" class="btn-secondary hidden">View Analytics</button>
+        </div>
+      </div>
+
+      <div id="error" class="error hidden"></div>
+    </main>
+
+    <footer>
+      <a href="#" id="settings">Settings</a>
+      <a href="https://your-domain.com/dashboard" target="_blank">Dashboard</a>
+    </footer>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

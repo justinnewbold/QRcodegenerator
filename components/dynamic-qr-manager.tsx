@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { toast } from "sonner"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -46,7 +47,7 @@ export default function DynamicQRManager({ onClose, onGenerateQR }: DynamicQRMan
 
   const handleCreate = () => {
     if (!formName.trim() || !formDestination.trim()) {
-      alert('Please enter a name and destination URL')
+      toast.warning('Please enter a name and destination URL')
       return
     }
 
@@ -77,7 +78,7 @@ export default function DynamicQRManager({ onClose, onGenerateQR }: DynamicQRMan
 
   const handleUpdate = () => {
     if (!editingQR || !formDestination.trim()) {
-      alert('Please enter a destination URL')
+      toast.warning('Please enter a destination URL')
       return
     }
 
@@ -103,10 +104,20 @@ export default function DynamicQRManager({ onClose, onGenerateQR }: DynamicQRMan
   }
 
   const handleDelete = (id: string) => {
-    if (confirm('Are you sure you want to delete this dynamic QR code?')) {
-      deleteDynamicQR(id)
-      loadQRs()
-    }
+    toast('Are you sure you want to delete this dynamic QR code?', {
+      action: {
+        label: 'Delete',
+        onClick: () => {
+          deleteDynamicQR(id)
+          loadQRs()
+          toast.success('Dynamic QR code deleted')
+        }
+      },
+      cancel: {
+        label: 'Cancel',
+        onClick: () => {}
+      }
+    })
   }
 
   const handleToggle = (id: string) => {

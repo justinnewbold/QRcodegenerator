@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { toast } from "sonner"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -65,7 +66,7 @@ export default function PresetExport({ qrDataUrl, onClose }: PresetExportProps) 
       }, 'image/png')
     } catch (error) {
       console.error('Error exporting:', error)
-      alert('Failed to export QR code')
+      toast.error('Failed to export QR code')
     } finally {
       setIsExporting(false)
     }

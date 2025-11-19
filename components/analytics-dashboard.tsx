@@ -12,6 +12,22 @@ import {
   type QRAnalyticsSummary
 } from "@/lib/qr-analytics"
 import { downloadBlob } from "@/lib/bulk-csv"
+import {
+  LineChart,
+  Line,
+  BarChart,
+  Bar,
+  PieChart,
+  Pie,
+  Cell,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer
+} from 'recharts'
+import { toast } from "sonner"
 
 interface AnalyticsDashboardProps {
   onClose: () => void
@@ -36,6 +52,7 @@ export default function AnalyticsDashboard({ onClose }: AnalyticsDashboardProps)
     const csv = exportAnalyticsCSV()
     const blob = new Blob([csv], { type: 'text/csv' })
     downloadBlob(blob, `qr-analytics-${new Date().toISOString().slice(0, 10)}.csv`)
+    toast.success('Analytics exported to CSV')
   }
 
   if (!stats) return null
@@ -143,70 +160,55 @@ export default function AnalyticsDashboard({ onClose }: AnalyticsDashboardProps)
               <CardTitle className="text-lg">Activity Over Time</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-2">
-                {chartData.map((day) => {
-                  const total = day.generated + day.downloaded + day.scanned + day.viewed
-                  const percentage = (total / maxValue) * 100
+              <ResponsiveContainer width="100%" height={300}>
+                <LineChart data={chartData}>
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                  <XAxis
+                    dataKey="date"
+                    tickFormatter={(date) => new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                    className="text-xs"
+                  />
+                  <YAxis className="text-xs" />
+                  <Tooltip
+                    contentStyle={{ backgroundColor: 'hsl(var(--background))', border: '1px solid hsl(var(--border))' }}
+                    labelFormatter={(date) => new Date(date).toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}
+                  />
+                  <Legend />
+                  <Line type="monotone" dataKey="generated" stroke="#3b82f6" strokeWidth={2} name="Generated" />
+                  <Line type="monotone" dataKey="downloaded" stroke="#22c55e" strokeWidth={2} name="Downloaded" />
+                  <Line type="monotone" dataKey="scanned" stroke="#a855f7" strokeWidth={2} name="Scanned" />
+                  <Line type="monotone" dataKey="viewed" stroke="#f97316" strokeWidth={2} name="Viewed" />
+                </LineChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
 
-                  return (
-                    <div key={day.date} className="space-y-1">
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="text-muted-foreground">{new Date(day.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
-                        <span className="font-mono">{total} events</span>
-                      </div>
-                      <div className="h-6 bg-muted rounded-full overflow-hidden flex">
-                        {day.generated > 0 && (
-                          <div
-                            className="bg-blue-500"
-                            style={{ width: `${(day.generated / total) * percentage}%` }}
-                            title={`${day.generated} generated`}
-                          />
-                        )}
-                        {day.downloaded > 0 && (
-                          <div
-                            className="bg-green-500"
-                            style={{ width: `${(day.downloaded / total) * percentage}%` }}
-                            title={`${day.downloaded} downloaded`}
-                          />
-                        )}
-                        {day.scanned > 0 && (
-                          <div
-                            className="bg-purple-500"
-                            style={{ width: `${(day.scanned / total) * percentage}%` }}
-                            title={`${day.scanned} scanned`}
-                          />
-                        )}
-                        {day.viewed > 0 && (
-                          <div
-                            className="bg-orange-500"
-                            style={{ width: `${(day.viewed / total) * percentage}%` }}
-                            title={`${day.viewed} viewed`}
-                          />
-                        )}
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-
-              <div className="flex gap-4 mt-4 text-xs">
-                <div className="flex items-center gap-1">
-                  <div className="w-3 h-3 bg-blue-500 rounded" />
-                  <span>Generated</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <div className="w-3 h-3 bg-green-500 rounded" />
-                  <span>Downloaded</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <div className="w-3 h-3 bg-purple-500 rounded" />
-                  <span>Scanned</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <div className="w-3 h-3 bg-orange-500 rounded" />
-                  <span>Viewed</span>
-                </div>
-              </div>
+          {/* Activity Bar Chart */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Activity Breakdown</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={chartData}>
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                  <XAxis
+                    dataKey="date"
+                    tickFormatter={(date) => new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                    className="text-xs"
+                  />
+                  <YAxis className="text-xs" />
+                  <Tooltip
+                    contentStyle={{ backgroundColor: 'hsl(var(--background))', border: '1px solid hsl(var(--border))' }}
+                    labelFormatter={(date) => new Date(date).toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}
+                  />
+                  <Legend />
+                  <Bar dataKey="generated" fill="#3b82f6" name="Generated" />
+                  <Bar dataKey="downloaded" fill="#22c55e" name="Downloaded" />
+                  <Bar dataKey="scanned" fill="#a855f7" name="Scanned" />
+                  <Bar dataKey="viewed" fill="#f97316" name="Viewed" />
+                </BarChart>
+              </ResponsiveContainer>
             </CardContent>
           </Card>
 

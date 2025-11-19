@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { toast } from "sonner"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
@@ -92,10 +93,10 @@ export default function QRComparison({ content, baseOptions, onClose }: QRCompar
       const blob = await response.blob()
       const item = new ClipboardItem({ 'image/png': blob })
       await navigator.clipboard.write([item])
-      alert('QR Code copied to clipboard!')
+      toast.success('QR Code copied to clipboard!')
     } catch (error) {
       console.error('Error copying:', error)
-      alert('Failed to copy. Please use download instead.')
+      toast.error('Failed to copy. Please use download instead.')
     }
   }
 

@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { toast } from "sonner"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
@@ -53,7 +54,7 @@ export default function AnimatedQRGenerator({ qrOptions, onClose }: AnimatedQRGe
       setCurrentFrame(0)
     } catch (error) {
       console.error('Error generating animation:', error)
-      alert('Failed to generate animation')
+      toast.error('Failed to generate animation')
     } finally {
       setIsGenerating(false)
     }

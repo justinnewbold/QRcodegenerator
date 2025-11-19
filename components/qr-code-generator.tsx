@@ -1,6 +1,9 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
+import dynamic from "next/dynamic"
+import { toast } from "sonner"
+import { Spinner } from "@/components/ui/spinner"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Input } from "@/components/ui/input"
@@ -42,17 +45,39 @@ import { validateQRCode, getQualityRating, type QRValidationResult } from "@/lib
 import { generateStyledSVG, optimizeSVG, svgToDataURL } from "@/lib/svg-generator"
 import { useKeyboardShortcuts, getShortcutDisplay, type KeyboardShortcut } from "@/hooks/use-keyboard-shortcuts"
 import DragDropUpload from "@/components/drag-drop-upload"
-import PresetExport from "@/components/preset-export"
-import EnhancedHistory from "@/components/enhanced-history"
-import PrintTemplateDesigner from "@/components/print-template-designer"
-import QRComparison from "@/components/qr-comparison"
-import AnimatedQRGenerator from "@/components/animated-qr-generator"
-import BulkCSVGenerator from "@/components/bulk-csv-generator"
-import BrandKitManager from "@/components/brand-kit-manager"
-import SmartQRScanner from "@/components/smart-qr-scanner"
-import AnalyticsDashboard from "@/components/analytics-dashboard"
-import DynamicQRManager from "@/components/dynamic-qr-manager"
-import { Download, QrCode, Wifi, Mail, Phone, MessageSquare, User, Link2, Heart, Plus, X, AlertTriangle, Info, Calendar, Coins, Smartphone, History, FileText, Printer, Trash2, MapPin, Twitter, Instagram, Linkedin, Facebook, Music, Save, FolderOpen, Package as PackageIcon, CheckCircle2, XCircle, AlertCircle, Eye, Keyboard, Share2, Image as ImageIcon, Palette, CreditCard, GitCompare, Zap, FileSpreadsheet, Scan, BarChart3, RefreshCw } from "lucide-react"
+
+// Dynamically import heavy components for code splitting
+const PresetExport = dynamic(() => import("@/components/preset-export"), {
+  loading: () => <div className="flex items-center justify-center p-8"><Spinner /></div>
+})
+const EnhancedHistory = dynamic(() => import("@/components/enhanced-history"), {
+  loading: () => <div className="flex items-center justify-center p-8"><Spinner /></div>
+})
+const PrintTemplateDesigner = dynamic(() => import("@/components/print-template-designer"), {
+  loading: () => <div className="flex items-center justify-center p-8"><Spinner /></div>
+})
+const QRComparison = dynamic(() => import("@/components/qr-comparison"), {
+  loading: () => <div className="flex items-center justify-center p-8"><Spinner /></div>
+})
+const AnimatedQRGenerator = dynamic(() => import("@/components/animated-qr-generator"), {
+  loading: () => <div className="flex items-center justify-center p-8"><Spinner /></div>
+})
+const BulkCSVGenerator = dynamic(() => import("@/components/bulk-csv-generator"), {
+  loading: () => <div className="flex items-center justify-center p-8"><Spinner /></div>
+})
+const BrandKitManager = dynamic(() => import("@/components/brand-kit-manager"), {
+  loading: () => <div className="flex items-center justify-center p-8"><Spinner /></div>
+})
+const SmartQRScanner = dynamic(() => import("@/components/smart-qr-scanner"), {
+  loading: () => <div className="flex items-center justify-center p-8"><Spinner /></div>
+})
+const AnalyticsDashboard = dynamic(() => import("@/components/analytics-dashboard"), {
+  loading: () => <div className="flex items-center justify-center p-8"><Spinner /></div>
+})
+const DynamicQRManager = dynamic(() => import("@/components/dynamic-qr-manager"), {
+  loading: () => <div className="flex items-center justify-center p-8"><Spinner /></div>
+})
+import { Download, QrCode, Wifi, Mail, Phone, MessageSquare, User, Link2, Heart, Plus, X, AlertTriangle, Info, Calendar, Coins, Smartphone, History, FileText, Printer, Trash2, MapPin, Twitter, Instagram, Linkedin, Facebook, Music, Save, FolderOpen, Package as PackageIcon, CheckCircle2, XCircle, AlertCircle, Eye, Keyboard, Share2, Image as ImageIcon, Palette, CreditCard, GitCompare, Zap, FileSpreadsheet, Scan, BarChart3, RefreshCw, Sun, Moon } from "lucide-react"
 
 export default function QRCodeGenerator() {
   const [qrType, setQrType] = useState<string>("url")
@@ -204,6 +229,7 @@ export default function QRCodeGenerator() {
 
   // SVG preview mode
   const [showSvgPreview, setShowSvgPreview] = useState<boolean>(false)
+  const [previewBgDark, setPreviewBgDark] = useState<boolean>(false)
 
   // New feature modals
   const [showPrintTemplates, setShowPrintTemplates] = useState<boolean>(false)
@@ -636,14 +662,14 @@ export default function QRCodeGenerator() {
         try {
           const item = new ClipboardItem({ 'image/png': blob })
           await navigator.clipboard.write([item])
-          alert('QR Code copied to clipboard!')
+          toast.success('QR Code copied to clipboard!')
         } catch {
-          alert('Sharing not supported on this device. Please use download instead.')
+          toast.warning('Sharing not supported on this device. Please use download instead.')
         }
       }
     } catch (error) {
       console.error('Error sharing:', error)
-      alert('Unable to share. Please use download instead.')
+      toast.error('Unable to share. Please use download instead.')
     }
   }
 
@@ -662,7 +688,7 @@ export default function QRCodeGenerator() {
 
   const saveAsTemplate = () => {
     if (!templateName.trim()) {
-      alert('Please enter a template name')
+      toast.error('Please enter a template name')
       return
     }
 
@@ -692,7 +718,7 @@ export default function QRCodeGenerator() {
     saveTemplate(template)
     setTemplates(getTemplates())
     setTemplateName('')
-    alert(`Template "${templateName}" saved successfully!`)
+    toast.success(`Template "${templateName}" saved successfully!`)
   }
 
   const loadFromTemplate = (template: QRTemplate) => {
@@ -716,10 +742,20 @@ export default function QRCodeGenerator() {
   }
 
   const handleDeleteTemplate = (id: string) => {
-    if (confirm('Delete this template?')) {
-      deleteTemplate(id)
-      setTemplates(getTemplates())
-    }
+    toast('Delete this template?', {
+      action: {
+        label: 'Delete',
+        onClick: () => {
+          deleteTemplate(id)
+          setTemplates(getTemplates())
+          toast.success('Template deleted')
+        }
+      },
+      cancel: {
+        label: 'Cancel',
+        onClick: () => {}
+      }
+    })
   }
 
   const loadFromHistory = (item: QRHistoryItem) => {
@@ -746,10 +782,20 @@ export default function QRCodeGenerator() {
   }
 
   const handleClearHistory = () => {
-    if (confirm('Are you sure you want to clear all history?')) {
-      clearHistory()
-      setHistory([])
-    }
+    toast('Are you sure you want to clear all history?', {
+      action: {
+        label: 'Clear All',
+        onClick: () => {
+          clearHistory()
+          setHistory([])
+          toast.success('History cleared')
+        }
+      },
+      cancel: {
+        label: 'Cancel',
+        onClick: () => {}
+      }
+    })
   }
 
   const openPrintView = () => {
@@ -2287,7 +2333,7 @@ export default function QRCodeGenerator() {
                           })
                           .catch((error) => {
                             console.error('Error compressing image:', error)
-                            alert('Failed to compress image. Please try a different image.')
+                            toast.error('Failed to compress image. Please try a different image.')
                           })
                       }}
                       currentImage={backgroundImageUrl}
@@ -2353,7 +2399,7 @@ export default function QRCodeGenerator() {
                           })
                           .catch((error) => {
                             console.error('Error compressing image:', error)
-                            alert('Failed to compress image. Please try a different image.')
+                            toast.error('Failed to compress image. Please try a different image.')
                           })
                       }}
                       currentImage={logoUrl}
@@ -2426,12 +2472,13 @@ export default function QRCodeGenerator() {
                   <>
                     <div className="w-full space-y-3">
                       {/* SVG/PNG Toggle */}
-                      <div className="flex items-center justify-center gap-2">
+                      <div className="flex items-center justify-center gap-2 flex-wrap">
                         <Button
                           variant={!showSvgPreview ? "default" : "outline"}
                           size="sm"
                           onClick={() => setShowSvgPreview(false)}
                           className="gap-2"
+                          aria-label="Show PNG preview"
                         >
                           <ImageIcon className="h-4 w-4" />
                           PNG Preview
@@ -2441,14 +2488,26 @@ export default function QRCodeGenerator() {
                           size="sm"
                           onClick={() => setShowSvgPreview(true)}
                           className="gap-2"
+                          aria-label="Show SVG preview"
                         >
                           <FileText className="h-4 w-4" />
                           SVG Preview
                         </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setPreviewBgDark(!previewBgDark)}
+                          className="gap-2"
+                          aria-label={`Switch to ${previewBgDark ? 'light' : 'dark'} preview background`}
+                          title="Toggle preview background"
+                        >
+                          {previewBgDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+                          {previewBgDark ? 'Light' : 'Dark'} BG
+                        </Button>
                       </div>
 
                       {/* QR Code Display */}
-                      <div className="p-8 bg-white rounded-lg shadow-lg flex items-center justify-center">
+                      <div className={`p-8 rounded-lg shadow-lg flex items-center justify-center transition-colors ${previewBgDark ? 'bg-gray-900' : 'bg-white'}`} id="qr-preview">
                         {showSvgPreview && qrSvg ? (
                           <div dangerouslySetInnerHTML={{ __html: qrSvg }} className="max-w-full" />
                         ) : (
