@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { toast } from "sonner"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
@@ -40,7 +41,7 @@ export default function BulkCSVGenerator({ onClose }: BulkCSVGeneratorProps) {
         const rows = parseCSV(content)
 
         if (rows.length === 0) {
-          alert('CSV file is empty')
+          toast.warning('CSV file is empty')
           return
         }
 
@@ -53,7 +54,7 @@ export default function BulkCSVGenerator({ onClose }: BulkCSVGeneratorProps) {
           setContentColumn(csvHeaders[0])
         }
       } catch (error) {
-        alert('Error parsing CSV: ' + (error instanceof Error ? error.message : 'Unknown error'))
+        toast.error('Error parsing CSV: ' + (error instanceof Error ? error.message : 'Unknown error'))
       }
     }
 
@@ -62,7 +63,7 @@ export default function BulkCSVGenerator({ onClose }: BulkCSVGeneratorProps) {
 
   const handleGenerate = async () => {
     if (!contentColumn) {
-      alert('Please select a content column')
+      toast.warning('Please select a content column')
       return
     }
 
@@ -98,7 +99,7 @@ export default function BulkCSVGenerator({ onClose }: BulkCSVGeneratorProps) {
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5)
       downloadBlob(zipBlob, `qr_codes_${timestamp}.zip`)
     } catch (error) {
-      alert('Error generating QR codes: ' + (error instanceof Error ? error.message : 'Unknown error'))
+      toast.error('Error generating QR codes: ' + (error instanceof Error ? error.message : 'Unknown error'))
     } finally {
       setGenerating(false)
     }

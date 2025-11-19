@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { toast } from "sonner"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -50,7 +51,7 @@ export default function BrandKitManager({ onClose, onApplyKit }: BrandKitManager
 
   const handleSave = () => {
     if (!formName.trim()) {
-      alert('Please enter a name for the brand kit')
+      toast.warning('Please enter a name for the brand kit')
       return
     }
 
@@ -99,10 +100,20 @@ export default function BrandKitManager({ onClose, onApplyKit }: BrandKitManager
   }
 
   const handleDelete = (id: string) => {
-    if (confirm('Are you sure you want to delete this brand kit?')) {
-      deleteBrandKit(id)
-      loadKits()
-    }
+    toast('Are you sure you want to delete this brand kit?', {
+      action: {
+        label: 'Delete',
+        onClick: () => {
+          deleteBrandKit(id)
+          loadKits()
+          toast.success('Brand kit deleted')
+        }
+      },
+      cancel: {
+        label: 'Cancel',
+        onClick: () => {}
+      }
+    })
   }
 
   const handleDuplicate = (id: string) => {
@@ -135,10 +146,10 @@ export default function BrandKitManager({ onClose, onApplyKit }: BrandKitManager
       try {
         const json = event.target?.result as string
         const result = importBrandKits(json)
-        alert(`Imported ${result.imported} brand kits. Skipped ${result.skipped} duplicates.`)
+        toast.success(`Imported ${result.imported} brand kits. Skipped ${result.skipped} duplicates.`)
         loadKits()
       } catch (error) {
-        alert('Error importing: ' + (error instanceof Error ? error.message : 'Unknown error'))
+        toast.error('Error importing: ' + (error instanceof Error ? error.message : 'Unknown error'))
       }
     }
     reader.readAsText(file)

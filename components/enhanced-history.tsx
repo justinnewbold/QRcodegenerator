@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { toast } from "sonner"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -116,11 +117,22 @@ export default function EnhancedHistory({ onClose, onRestore }: EnhancedHistoryP
 
   const handleBulkDelete = () => {
     if (selectedIds.size === 0) return
-    if (!confirm(`Delete ${selectedIds.size} selected items?`)) return
 
-    bulkDeleteHistory(Array.from(selectedIds))
-    setSelectedIds(new Set())
-    loadHistory()
+    toast(`Delete ${selectedIds.size} selected items?`, {
+      action: {
+        label: 'Delete',
+        onClick: () => {
+          bulkDeleteHistory(Array.from(selectedIds))
+          setSelectedIds(new Set())
+          loadHistory()
+          toast.success(`Deleted ${selectedIds.size} items`)
+        }
+      },
+      cancel: {
+        label: 'Cancel',
+        onClick: () => {}
+      }
+    })
   }
 
   const handleToggleSelect = (id: string) => {
