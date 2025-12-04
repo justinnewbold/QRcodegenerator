@@ -3,6 +3,7 @@ import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { PWARegister } from "@/components/pwa-register";
 import { SkipLinks, AnnouncerProvider } from "@/components/accessibility";
+import { ErrorBoundary } from "@/components/error-boundary";
 
 export const metadata: Metadata = {
   title: "QR Code Generator - Free & Modern | newbold.cloud",
@@ -52,13 +53,15 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <AnnouncerProvider>
-            <SkipLinks />
-            <main id="main-content">
-              {children}
-            </main>
-            <PWARegister />
-          </AnnouncerProvider>
+          <ErrorBoundary>
+            <AnnouncerProvider>
+              <SkipLinks />
+              <main id="main-content">
+                {children}
+              </main>
+              <PWARegister />
+            </AnnouncerProvider>
+          </ErrorBoundary>
         </ThemeProvider>
       </body>
     </html>
