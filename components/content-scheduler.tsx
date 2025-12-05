@@ -308,7 +308,7 @@ export function ContentScheduler({
                       onChange={(e) => setRepeatType(e.target.value as typeof repeatType)}
                       className="w-full rounded-lg border border-border bg-background px-3 py-2"
                     >
-                      <option value="none">Don't repeat</option>
+                      <option value="none">Do not repeat</option>
                       <option value="daily">Daily</option>
                       <option value="weekly">Weekly</option>
                       <option value="monthly">Monthly</option>

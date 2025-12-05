@@ -289,13 +289,13 @@ export function QRValidatorPanel({
                   <div>
                     <p className="text-xs text-muted-foreground">Minimum Size</p>
                     <p className="font-medium">
-                      {result.printRecommendation.minSizeCm} cm ({result.printRecommendation.minSizeInches}")
+                      {result.printRecommendation.minSizeCm} cm ({result.printRecommendation.minSizeInches}&quot;)
                     </p>
                   </div>
                   <div>
                     <p className="text-xs text-muted-foreground">Recommended Size</p>
                     <p className="font-medium">
-                      {result.printRecommendation.recommendedSizeCm} cm ({result.printRecommendation.recommendedSizeInches}")
+                      {result.printRecommendation.recommendedSizeCm} cm ({result.printRecommendation.recommendedSizeInches}&quot;)
                     </p>
                   </div>
                   <div>
