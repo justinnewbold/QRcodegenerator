@@ -291,21 +291,20 @@ export function getVersioningStats(): {
   const histories = getAllHistories();
   const allVersions = Object.values(histories).flatMap(h => h.versions);
 
-  let oldest: QRVersion | null = null;
-  let newest: QRVersion | null = null;
+  const sortedByTime = allVersions.length > 0
+    ? [...allVersions].sort((a, b) => a.timestamp.localeCompare(b.timestamp))
+    : [];
 
-  allVersions.forEach(v => {
-    if (!oldest || v.timestamp < oldest.timestamp) oldest = v;
-    if (!newest || v.timestamp > newest.timestamp) newest = v;
-  });
+  const oldestVersion = sortedByTime.length > 0 ? sortedByTime[0].timestamp : null;
+  const newestVersion = sortedByTime.length > 0 ? sortedByTime[sortedByTime.length - 1].timestamp : null;
 
   const storageSize = new Blob([JSON.stringify(histories)]).size;
 
   return {
     totalQRs: Object.keys(histories).length,
     totalVersions: allVersions.length,
-    oldestVersion: oldest?.timestamp || null,
-    newestVersion: newest?.timestamp || null,
+    oldestVersion,
+    newestVersion,
     storageSize,
   };
 }
