@@ -239,3 +239,467 @@ export function getQualityRating(score: number): {
     };
   }
 }
+
+// ============================================
+// Enhanced Validation System
+// ============================================
+
+export interface EnhancedValidationResult {
+  isValid: boolean;
+  score: number;
+  category: 'excellent' | 'good' | 'fair' | 'poor';
+  checks: ValidationCheck[];
+  summary: {
+    passed: number;
+    warnings: number;
+    errors: number;
+  };
+  printRecommendation: PrintRecommendation;
+}
+
+export interface ValidationCheck {
+  id: string;
+  name: string;
+  category: 'contrast' | 'size' | 'content' | 'logo' | 'accessibility' | 'technical';
+  status: 'pass' | 'warning' | 'error';
+  message: string;
+  details?: string;
+  suggestion?: string;
+  score: number;
+}
+
+export interface PrintRecommendation {
+  minSizeCm: number;
+  minSizeInches: number;
+  recommendedSizeCm: number;
+  recommendedSizeInches: number;
+  scanDistanceM: number;
+  scanDistanceFt: number;
+  dpi: number;
+}
+
+export interface QRCodeConfig {
+  content: string;
+  type: string;
+  size: number;
+  errorCorrection: ErrorCorrectionLevel;
+  foregroundColor: string;
+  backgroundColor: string;
+  dotStyle?: string;
+  margin?: number;
+  hasLogo?: boolean;
+  logoSize?: number;
+  gradient?: {
+    enabled: boolean;
+    colors?: string[];
+  };
+}
+
+// QR code version capacities
+const VERSION_CAPACITIES = [
+  17, 32, 53, 78, 106, 134, 154, 192, 230, 271,
+  321, 367, 425, 458, 520, 586, 644, 718, 792, 858,
+  929, 1003, 1091, 1171, 1273, 1367, 1465, 1528, 1628, 1732
+];
+
+function estimateVersion(contentLength: number): number {
+  for (let v = 0; v < VERSION_CAPACITIES.length; v++) {
+    if (contentLength <= VERSION_CAPACITIES[v]) {
+      return v + 1;
+    }
+  }
+  return 40;
+}
+
+function getModuleCount(version: number): number {
+  return 21 + (version - 1) * 4;
+}
+
+function hexToRgb(hex: string): { r: number; g: number; b: number } | null {
+  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  return result
+    ? {
+        r: parseInt(result[1], 16),
+        g: parseInt(result[2], 16),
+        b: parseInt(result[3], 16),
+      }
+    : null;
+}
+
+function isLightColor(hex: string): boolean {
+  const rgb = hexToRgb(hex);
+  if (!rgb) return false;
+  const brightness = (rgb.r * 299 + rgb.g * 587 + rgb.b * 114) / 1000;
+  return brightness > 180;
+}
+
+function isValidUrl(url: string): boolean {
+  try {
+    new URL(url);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Comprehensive QR code validation
+ */
+export function enhancedValidate(config: QRCodeConfig): EnhancedValidationResult {
+  const checks: ValidationCheck[] = [];
+
+  // 1. Content Validation
+  if (!config.content || config.content.trim().length === 0) {
+    checks.push({
+      id: 'content-empty',
+      name: 'Content Present',
+      category: 'content',
+      status: 'error',
+      message: 'QR code has no content',
+      suggestion: 'Add content for the QR code to encode',
+      score: 0,
+    });
+  } else {
+    checks.push({
+      id: 'content-present',
+      name: 'Content Present',
+      category: 'content',
+      status: 'pass',
+      message: 'Content is present',
+      details: `${config.content.length} characters`,
+      score: 100,
+    });
+
+    // Content length check
+    if (config.content.length > 1000) {
+      checks.push({
+        id: 'content-length',
+        name: 'Content Length',
+        category: 'content',
+        status: 'warning',
+        message: 'Content is very long',
+        details: 'Long content creates dense QR codes that are harder to scan',
+        suggestion: 'Consider using a URL shortener or reducing content',
+        score: 60,
+      });
+    } else if (config.content.length > 500) {
+      checks.push({
+        id: 'content-length',
+        name: 'Content Length',
+        category: 'content',
+        status: 'warning',
+        message: 'Content is moderately long',
+        suggestion: 'Consider if all content is necessary',
+        score: 80,
+      });
+    } else {
+      checks.push({
+        id: 'content-length',
+        name: 'Content Length',
+        category: 'content',
+        status: 'pass',
+        message: 'Content length is optimal',
+        score: 100,
+      });
+    }
+
+    // URL validation
+    if (config.type === 'url' || config.content.startsWith('http')) {
+      if (!isValidUrl(config.content)) {
+        checks.push({
+          id: 'url-valid',
+          name: 'URL Format',
+          category: 'content',
+          status: 'error',
+          message: 'Invalid URL format',
+          suggestion: 'Ensure URL includes https:// and is properly formatted',
+          score: 0,
+        });
+      } else {
+        if (config.content.startsWith('http://')) {
+          checks.push({
+            id: 'url-secure',
+            name: 'URL Security',
+            category: 'content',
+            status: 'warning',
+            message: 'Using insecure HTTP',
+            suggestion: 'Use HTTPS for secure connections',
+            score: 70,
+          });
+        } else {
+          checks.push({
+            id: 'url-secure',
+            name: 'URL Security',
+            category: 'content',
+            status: 'pass',
+            message: 'Using secure HTTPS',
+            score: 100,
+          });
+        }
+      }
+    }
+  }
+
+  // 2. Contrast Validation
+  const contrastRatio = getContrastRatio(config.foregroundColor, config.backgroundColor);
+
+  if (contrastRatio < 2) {
+    checks.push({
+      id: 'contrast',
+      name: 'Color Contrast',
+      category: 'contrast',
+      status: 'error',
+      message: 'Contrast is too low to scan',
+      details: `Ratio: ${contrastRatio.toFixed(1)}:1 (minimum 3:1 required)`,
+      suggestion: 'Use darker foreground or lighter background',
+      score: 0,
+    });
+  } else if (contrastRatio < 3) {
+    checks.push({
+      id: 'contrast',
+      name: 'Color Contrast',
+      category: 'contrast',
+      status: 'error',
+      message: 'Contrast may cause scanning issues',
+      details: `Ratio: ${contrastRatio.toFixed(1)}:1`,
+      suggestion: 'Increase contrast for reliable scanning',
+      score: 30,
+    });
+  } else if (contrastRatio < 4.5) {
+    checks.push({
+      id: 'contrast',
+      name: 'Color Contrast',
+      category: 'contrast',
+      status: 'warning',
+      message: 'Contrast could be improved',
+      details: `Ratio: ${contrastRatio.toFixed(1)}:1 (4.5:1 recommended)`,
+      suggestion: 'Higher contrast improves scanning reliability',
+      score: 70,
+    });
+  } else {
+    checks.push({
+      id: 'contrast',
+      name: 'Color Contrast',
+      category: 'contrast',
+      status: 'pass',
+      message: 'Excellent contrast',
+      details: `Ratio: ${contrastRatio.toFixed(1)}:1`,
+      score: 100,
+    });
+  }
+
+  // 3. Color scheme validation
+  if (isLightColor(config.foregroundColor)) {
+    checks.push({
+      id: 'foreground-color',
+      name: 'Foreground Color',
+      category: 'accessibility',
+      status: 'warning',
+      message: 'Light foreground color',
+      details: 'Inverted QR codes may not scan on all devices',
+      suggestion: 'Use a dark foreground color for best compatibility',
+      score: 60,
+    });
+  } else {
+    checks.push({
+      id: 'foreground-color',
+      name: 'Foreground Color',
+      category: 'accessibility',
+      status: 'pass',
+      message: 'Standard dark foreground',
+      score: 100,
+    });
+  }
+
+  // 4. Size validation
+  if (config.size < 100) {
+    checks.push({
+      id: 'size',
+      name: 'QR Code Size',
+      category: 'size',
+      status: 'error',
+      message: 'QR code is too small',
+      details: `${config.size}px is below minimum recommended size`,
+      suggestion: 'Use at least 100px for digital, larger for print',
+      score: 30,
+    });
+  } else if (config.size < 200) {
+    checks.push({
+      id: 'size',
+      name: 'QR Code Size',
+      category: 'size',
+      status: 'warning',
+      message: 'QR code is small',
+      details: `${config.size}px - may be hard to scan from distance`,
+      suggestion: 'Consider 200px+ for better scan distance',
+      score: 70,
+    });
+  } else {
+    checks.push({
+      id: 'size',
+      name: 'QR Code Size',
+      category: 'size',
+      status: 'pass',
+      message: 'Good QR code size',
+      details: `${config.size}px`,
+      score: 100,
+    });
+  }
+
+  // 5. Margin/Quiet zone validation
+  if (config.margin !== undefined) {
+    if (config.margin < 2) {
+      checks.push({
+        id: 'margin',
+        name: 'Quiet Zone',
+        category: 'technical',
+        status: 'warning',
+        message: 'Small quiet zone',
+        details: 'The white border helps scanners detect the QR code',
+        suggestion: 'Use a margin of at least 4 modules',
+        score: 60,
+      });
+    } else {
+      checks.push({
+        id: 'margin',
+        name: 'Quiet Zone',
+        category: 'technical',
+        status: 'pass',
+        message: 'Adequate quiet zone',
+        score: 100,
+      });
+    }
+  }
+
+  // 6. Logo validation
+  if (config.hasLogo && config.logoSize !== undefined) {
+    const logoPercentage = config.logoSize * 100;
+
+    if (logoPercentage > 30) {
+      checks.push({
+        id: 'logo-size',
+        name: 'Logo Size',
+        category: 'logo',
+        status: 'error',
+        message: 'Logo is too large',
+        details: `Logo covers ${logoPercentage.toFixed(0)}% (max 30%)`,
+        suggestion: 'Reduce logo size or remove it',
+        score: 20,
+      });
+    } else if (logoPercentage > 20) {
+      checks.push({
+        id: 'logo-size',
+        name: 'Logo Size',
+        category: 'logo',
+        status: 'warning',
+        message: 'Logo is large',
+        details: `Logo covers ${logoPercentage.toFixed(0)}%`,
+        suggestion: 'Use High (H) error correction with large logos',
+        score: 70,
+      });
+    } else {
+      checks.push({
+        id: 'logo-size',
+        name: 'Logo Size',
+        category: 'logo',
+        status: 'pass',
+        message: 'Logo size is appropriate',
+        details: `Logo covers ${logoPercentage.toFixed(0)}%`,
+        score: 100,
+      });
+    }
+
+    // Error correction with logo
+    if (config.errorCorrection === 'L' || config.errorCorrection === 'M') {
+      checks.push({
+        id: 'logo-ec',
+        name: 'Error Correction',
+        category: 'logo',
+        status: 'warning',
+        message: 'Low error correction with logo',
+        suggestion: 'Use Q or H error correction when using logos',
+        score: 60,
+      });
+    }
+  }
+
+  // 7. Error correction recommendation
+  const version = estimateVersion(config.content.length);
+  if (version > 10 && (config.errorCorrection === 'L')) {
+    checks.push({
+      id: 'ec-recommendation',
+      name: 'Error Correction Level',
+      category: 'technical',
+      status: 'warning',
+      message: 'Consider higher error correction',
+      details: `Version ${version} QR code with low error correction`,
+      suggestion: 'Use M or Q for better reliability with dense codes',
+      score: 70,
+    });
+  }
+
+  // Calculate summary
+  const passed = checks.filter(c => c.status === 'pass').length;
+  const warnings = checks.filter(c => c.status === 'warning').length;
+  const errors = checks.filter(c => c.status === 'error').length;
+
+  // Calculate overall score
+  const totalScore = checks.reduce((sum, c) => sum + c.score, 0);
+  const score = Math.round(totalScore / checks.length);
+
+  // Determine category
+  let category: 'excellent' | 'good' | 'fair' | 'poor';
+  if (errors > 0) {
+    category = score >= 50 ? 'fair' : 'poor';
+  } else if (warnings > 2) {
+    category = 'fair';
+  } else if (warnings > 0) {
+    category = 'good';
+  } else {
+    category = 'excellent';
+  }
+
+  // Calculate print recommendations
+  const moduleCount = getModuleCount(version);
+  const minSizeCm = Math.max(2, moduleCount * 0.05);
+  const recommendedSizeCm = minSizeCm * 1.5;
+
+  const printRecommendation: PrintRecommendation = {
+    minSizeCm: Math.round(minSizeCm * 10) / 10,
+    minSizeInches: Math.round(minSizeCm / 2.54 * 10) / 10,
+    recommendedSizeCm: Math.round(recommendedSizeCm * 10) / 10,
+    recommendedSizeInches: Math.round(recommendedSizeCm / 2.54 * 10) / 10,
+    scanDistanceM: Math.round(recommendedSizeCm * 10) / 100,
+    scanDistanceFt: Math.round(recommendedSizeCm * 10 / 30.48 * 10) / 10,
+    dpi: 300,
+  };
+
+  return {
+    isValid: errors === 0,
+    score,
+    category,
+    checks,
+    summary: { passed, warnings, errors },
+    printRecommendation,
+  };
+}
+
+/**
+ * Real-time quick validation for live feedback
+ */
+export function quickCheck(config: QRCodeConfig): {
+  isValid: boolean;
+  hasIssues: boolean;
+  mainIssue?: string;
+  score: number;
+} {
+  const result = enhancedValidate(config);
+  const errorCheck = result.checks.find(c => c.status === 'error');
+
+  return {
+    isValid: result.isValid,
+    hasIssues: result.summary.errors > 0 || result.summary.warnings > 0,
+    mainIssue: errorCheck?.message,
+    score: result.score,
+  };
+}
