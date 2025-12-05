@@ -149,7 +149,7 @@ export function getAllUrls(): { url: string; count: number; qrIds: string[] }[] 
 function extractUrls(text: string): string[] {
   const urlRegex = /https?:\/\/[^\s<>"{}|\\^`[\]]+/gi;
   const matches = text.match(urlRegex) || [];
-  return [...new Set(matches)];
+  return Array.from(new Set(matches));
 }
 
 /**
