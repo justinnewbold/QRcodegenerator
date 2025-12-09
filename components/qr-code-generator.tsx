@@ -22,7 +22,6 @@ import {
   generateLocationString,
   generateWhatsAppString,
   generateMeetingString,
-  generatePayPalString,
   generateMediaString,
   generatePDF,
   type ErrorCorrectionLevel,
@@ -139,11 +138,6 @@ export default function QRCodeGenerator() {
   // Meeting fields
   const [meetingPlatform, setMeetingPlatform] = useState<'zoom' | 'teams' | 'meet'>('zoom')
   const [meetingUrl, setMeetingUrl] = useState<string>("")
-
-  // PayPal fields
-  const [paypalEmail, setPaypalEmail] = useState<string>("")
-  const [paypalAmount, setPaypalAmount] = useState<string>("")
-  const [paypalCurrency, setPaypalCurrency] = useState<string>("USD")
 
   // Media fields
   const [mediaPlatform, setMediaPlatform] = useState<'spotify' | 'youtube' | 'soundcloud' | 'applemusic'>('spotify')
@@ -408,11 +402,6 @@ export default function QRCodeGenerator() {
           newContent = generateMeetingString(meetingPlatform, meetingUrl)
         }
         break
-      case "paypal":
-        if (paypalEmail) {
-          newContent = generatePayPalString(paypalEmail, paypalAmount, paypalCurrency)
-        }
-        break
       case "media":
         if (mediaUrl) {
           newContent = generateMediaString(mediaPlatform, mediaUrl)
@@ -429,8 +418,7 @@ export default function QRCodeGenerator() {
       petContacts, petCustomFields, petReward, calendarTitle, calendarLocation, calendarStart,
       calendarEnd, calendarDescription, cryptoAddress, cryptoAmount, cryptoLabel, appPlatform,
       appId, socialPlatform, socialUsername, locationLat, locationLng, locationLabel,
-      whatsappPhone, whatsappMessage, meetingPlatform, meetingUrl, paypalEmail, paypalAmount,
-      paypalCurrency, mediaPlatform, mediaUrl])
+      whatsappPhone, whatsappMessage, meetingPlatform, meetingUrl, mediaPlatform, mediaUrl])
 
   const generateQR = useCallback(async () => {
     if (!content) {
@@ -885,11 +873,6 @@ export default function QRCodeGenerator() {
       case 'meeting':
         setMeetingUrl('https://zoom.us/j/1234567890')
         break
-      case 'paypal':
-        setPaypalEmail('yourusername')
-        setPaypalAmount('10')
-        setPaypalCurrency('USD')
-        break
       case 'media':
         if (mediaPlatform === 'spotify') {
           setMediaUrl('https://open.spotify.com/track/3n3Ppam7vgaVa1iaRUc9Lp')
@@ -1005,10 +988,6 @@ export default function QRCodeGenerator() {
                   <TabsTrigger value="meeting" className="flex items-center gap-1">
                     <Phone className="h-4 w-4" />
                     <span className="hidden sm:inline">Meeting</span>
-                  </TabsTrigger>
-                  <TabsTrigger value="paypal" className="flex items-center gap-1">
-                    <Coins className="h-4 w-4" />
-                    <span className="hidden sm:inline">PayPal</span>
                   </TabsTrigger>
                   <TabsTrigger value="media" className="flex items-center gap-1">
                     <Music className="h-4 w-4" />
@@ -1832,48 +1811,6 @@ export default function QRCodeGenerator() {
                   </div>
                   <p className="text-xs text-muted-foreground">
                     Paste your meeting link or ID. For Zoom, you can use just the meeting ID.
-                  </p>
-                </TabsContent>
-
-                <TabsContent value="paypal" className="space-y-4">
-                  <div>
-                    <Label htmlFor="paypal-email">PayPal.me Username or Email *</Label>
-                    <Input
-                      id="paypal-email"
-                      placeholder="yourusername or email@example.com"
-                      value={paypalEmail}
-                      onChange={(e) => setPaypalEmail(e.target.value)}
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="paypal-amount">Amount (optional)</Label>
-                      <Input
-                        id="paypal-amount"
-                        type="number"
-                        step="0.01"
-                        placeholder="10.00"
-                        value={paypalAmount}
-                        onChange={(e) => setPaypalAmount(e.target.value)}
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="paypal-currency">Currency</Label>
-                      <Select
-                        id="paypal-currency"
-                        value={paypalCurrency}
-                        onChange={(e) => setPaypalCurrency(e.target.value)}
-                      >
-                        <option value="USD">USD</option>
-                        <option value="EUR">EUR</option>
-                        <option value="GBP">GBP</option>
-                        <option value="CAD">CAD</option>
-                        <option value="AUD">AUD</option>
-                      </Select>
-                    </div>
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    Create a PayPal payment link. Use your PayPal.me username for best results.
                   </p>
                 </TabsContent>
 
@@ -2837,7 +2774,7 @@ export default function QRCodeGenerator() {
                 <strong>Features:</strong>
               </p>
               <ul className="list-disc list-inside space-y-1 ml-2">
-                <li>17 QR code types (URL, Text, WhatsApp, Meeting Links, PayPal, Media, Social Media, Location/Maps, Pet ID, WiFi, vCard, Email, SMS, Phone, Calendar Events, Cryptocurrency, App Store)</li>
+                <li>16 QR code types (URL, Text, WhatsApp, Meeting Links, Media, Social Media, Location/Maps, Pet ID, WiFi, vCard, Email, SMS, Phone, Calendar Events, Cryptocurrency, App Store)</li>
                 <li>28+ color palette presets across 6 categories (Classic, Professional, Vibrant, Gradient, Pastel, Brand)</li>
                 <li>Enhanced vCard with social media links, full address, birthday</li>
                 <li>Save & load custom templates for reusable settings</li>

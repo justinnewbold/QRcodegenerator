@@ -579,23 +579,6 @@ export function generateMeetingString(platform: 'zoom' | 'teams' | 'meet', meeti
   return meetingUrl;
 }
 
-export function generatePayPalString(email: string, amount?: string, currency: string = 'USD', note?: string): string {
-  // PayPal.me format
-  const cleanEmail = email.replace('@', '').replace(/\./g, '');
-  let result = `https://paypal.me/${email}`;
-
-  // If it's not a paypal.me username, use standard paypal link
-  if (email.includes('@')) {
-    result = `https://www.paypal.com/paypalme/${cleanEmail}`;
-  }
-
-  if (amount) {
-    result += `/${amount}${currency}`;
-  }
-
-  return result;
-}
-
 export function generateMediaString(platform: 'spotify' | 'youtube' | 'soundcloud' | 'applemusic', url: string): string {
   // Parse and validate media URLs
   if (url.startsWith('http')) {
