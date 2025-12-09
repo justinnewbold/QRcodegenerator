@@ -379,7 +379,7 @@ export function getSizesByPlatform(platform: string): SocialMediaSize[] {
  * Get all platforms
  */
 export function getAllPlatforms(): string[] {
-  return [...new Set(SOCIAL_MEDIA_SIZES.map(s => s.platform))];
+  return Array.from(new Set(SOCIAL_MEDIA_SIZES.map(s => s.platform)));
 }
 
 /**
