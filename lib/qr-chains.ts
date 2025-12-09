@@ -145,7 +145,11 @@ export function getChain(chainId: string): QRChain | null {
  */
 export function updateChain(
   chainId: string,
-  updates: Partial<Pick<QRChain, 'name' | 'description' | 'settings'>>
+  updates: {
+    name?: string;
+    description?: string;
+    settings?: Partial<ChainSettings>;
+  }
 ): QRChain | null {
   const chains = getAllChains();
   if (!chains[chainId]) return null;
