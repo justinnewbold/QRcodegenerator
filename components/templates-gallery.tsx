@@ -164,7 +164,7 @@ export function TemplatesGallery({
                 }`}
               >
                 <Icon className="h-4 w-4" />
-                {cat.name}
+                {cat.label}
               </button>
             );
           })}
