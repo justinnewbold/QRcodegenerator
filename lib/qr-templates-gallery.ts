@@ -735,3 +735,12 @@ export function getCategoriesWithCounts(): { category: typeof TEMPLATE_CATEGORIE
     count: QR_TEMPLATES.filter(t => t.category === cat.id).length,
   }));
 }
+
+/**
+ * Apply a template and return its settings
+ */
+export function applyTemplate(templateId: string): TemplateSettings | null {
+  const template = getTemplate(templateId);
+  if (!template) return null;
+  return { ...template.settings };
+}
