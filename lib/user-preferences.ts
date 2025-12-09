@@ -4,6 +4,9 @@
  */
 
 export interface UserPreferences {
+  // Project settings
+  projectName: string;
+
   // QR Code defaults
   defaultSize: number;
   defaultErrorCorrection: 'L' | 'M' | 'Q' | 'H';
@@ -39,6 +42,9 @@ export interface UserPreferences {
 }
 
 const DEFAULT_PREFERENCES: UserPreferences = {
+  // Project settings
+  projectName: '',
+
   // QR Code defaults
   defaultSize: 300,
   defaultErrorCorrection: 'M',

@@ -256,6 +256,18 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
           {/* UI Tab */}
           {activeTab === 'ui' && (
             <div className="space-y-6">
+              <SettingGroup title="Project">
+                <SettingRow label="Project Name" description="Name for your QR code project">
+                  <input
+                    type="text"
+                    value={preferences.projectName}
+                    onChange={e => updatePreference('projectName', e.target.value)}
+                    placeholder="My QR Project"
+                    className="w-48 rounded-lg border border-border bg-background px-3 py-2 text-sm"
+                  />
+                </SettingRow>
+              </SettingGroup>
+
               <SettingGroup title="Display">
                 <SettingRow label="Compact Mode" description="Reduce spacing and padding">
                   <Toggle
