@@ -26,10 +26,13 @@ export function saveToHistory(item: Omit<QRHistoryItem, 'id' | 'timestamp'>): vo
 
   try {
     const history = getHistory();
+    const timestamp = Date.now();
+    // Use timestamp + random suffix to prevent ID collisions
+    const randomSuffix = Math.random().toString(36).substring(2, 8);
     const newItem: QRHistoryItem = {
       ...item,
-      id: Date.now().toString(),
-      timestamp: Date.now(),
+      id: `${timestamp}-${randomSuffix}`,
+      timestamp,
     };
 
     // Add to beginning of array

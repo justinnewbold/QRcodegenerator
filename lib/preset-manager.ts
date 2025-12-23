@@ -269,7 +269,7 @@ export function savePreset(preset: Omit<QRPreset, 'id' | 'createdAt' | 'updatedA
 
   const newPreset: QRPreset = {
     ...preset,
-    id: `preset-${Date.now()}`,
+    id: `preset-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     isBuiltIn: false,

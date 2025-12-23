@@ -253,7 +253,7 @@ export function saveCustomTheme(theme: Omit<CustomTheme, 'id' | 'createdAt' | 'u
 
   const newTheme: CustomTheme = {
     ...theme,
-    id: `custom-${Date.now()}`,
+    id: `custom-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     isBuiltIn: false,

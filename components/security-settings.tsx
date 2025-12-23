@@ -125,7 +125,7 @@ export function SecuritySettings({
     }
 
     const newLocation: GeoLocation = {
-      id: `loc-${Date.now()}`,
+      id: `loc-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
       name: newLocationName,
       latitude: lat,
       longitude: lng,
