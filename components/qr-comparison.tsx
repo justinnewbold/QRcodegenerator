@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
@@ -37,15 +37,48 @@ export default function QRComparison({ content, baseOptions, onClose }: QRCompar
     { id: 4, style: 'extra-rounded', finderPattern: 'extra-rounded', qrDataUrl: null, generating: false },
   ])
 
-  useEffect(() => {
-    generateAllComparisons()
-  }, [])
+  const initialGenerationDone = useRef(false);
 
-  const generateAllComparisons = async () => {
-    for (const slot of slots) {
-      await generateSlot(slot.id)
+  const generateAllComparisons = useCallback(async () => {
+    const initialSlots = [
+      { id: 1, style: 'squares' as QRStyle, finderPattern: 'square' as FinderPattern },
+      { id: 2, style: 'dots' as QRStyle, finderPattern: 'rounded' as FinderPattern },
+      { id: 3, style: 'rounded' as QRStyle, finderPattern: 'dots' as FinderPattern },
+      { id: 4, style: 'extra-rounded' as QRStyle, finderPattern: 'extra-rounded' as FinderPattern },
+    ];
+    for (const slot of initialSlots) {
+      try {
+        setSlots(prev => prev.map(s =>
+          s.id === slot.id ? { ...s, generating: true } : s
+        ));
+        const result = await generateQRCode({
+          content,
+          errorCorrectionLevel: baseOptions.errorLevel,
+          size: baseOptions.size,
+          foregroundColor: baseOptions.fgColor,
+          backgroundColor: baseOptions.bgColor,
+          margin: baseOptions.margin,
+          logoUrl: baseOptions.logoUrl,
+          style: slot.style,
+          finderPattern: slot.finderPattern,
+        });
+        setSlots(prev => prev.map(s =>
+          s.id === slot.id ? { ...s, qrDataUrl: result.dataUrl, generating: false } : s
+        ));
+      } catch {
+        setSlots(prev => prev.map(s =>
+          s.id === slot.id ? { ...s, generating: false } : s
+        ));
+      }
     }
-  }
+  }, [content, baseOptions]);
+
+  useEffect(() => {
+    if (!initialGenerationDone.current) {
+      initialGenerationDone.current = true;
+      generateAllComparisons();
+    }
+  }, [generateAllComparisons]);
 
   const generateSlot = async (slotId: number) => {
     const slot = slots.find(s => s.id === slotId)

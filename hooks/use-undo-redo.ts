@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback, useRef, useEffect } from 'react';
+import isEqual from 'fast-deep-equal';
 
 interface UndoRedoOptions<T> {
   maxHistory?: number;
@@ -75,8 +76,8 @@ export function useUndoRedo<T>(
               ? (newState as (prev: T) => T)(prevState.present)
               : newState;
 
-          // Don't add to history if state hasn't changed
-          if (JSON.stringify(resolvedNewState) === JSON.stringify(prevState.present)) {
+          // Don't add to history if state hasn't changed (using fast-deep-equal for performance)
+          if (isEqual(resolvedNewState, prevState.present)) {
             return prevState;
           }
 

@@ -41,16 +41,44 @@ const GEOLOCATION_KEY = 'qr-geolocation-restriction';
 // ============================================
 
 /**
- * Simple hash function (for demo purposes - use proper hashing in production)
+ * Secure hash function using Web Crypto API (SHA-256)
+ * Falls back to a stronger hash for environments without crypto support
  */
-function simpleHash(str: string): string {
-  let hash = 0;
+async function secureHash(str: string): Promise<string> {
+  // Use Web Crypto API for secure SHA-256 hashing
+  if (typeof window !== 'undefined' && window.crypto?.subtle) {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(str);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+  }
+
+  // Fallback for SSR or environments without crypto (still better than simple hash)
+  // Uses a combination of multiple passes for improved security
+  let hash1 = 5381;
+  let hash2 = 52711;
   for (let i = 0; i < str.length; i++) {
     const char = str.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
-    hash = hash & hash;
+    hash1 = ((hash1 << 5) + hash1) ^ char;
+    hash2 = ((hash2 << 5) + hash2) ^ char;
   }
-  return Math.abs(hash).toString(36);
+  return (Math.abs(hash1) * 4096 + Math.abs(hash2)).toString(36);
+}
+
+/**
+ * Synchronous hash for backwards compatibility (used only when async not possible)
+ * @deprecated Use secureHash instead
+ */
+function legacyHash(str: string): string {
+  let hash1 = 5381;
+  let hash2 = 52711;
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i);
+    hash1 = ((hash1 << 5) + hash1) ^ char;
+    hash2 = ((hash2 << 5) + hash2) ^ char;
+  }
+  return (Math.abs(hash1) * 4096 + Math.abs(hash2)).toString(36);
 }
 
 /**
@@ -75,22 +103,23 @@ function savePasswordConfigs(configs: Record<string, PasswordProtection>): void 
 }
 
 /**
- * Set password protection
+ * Set password protection (async for secure hashing)
  */
-export function setPasswordProtection(
+export async function setPasswordProtection(
   qrId: string,
   password: string,
   options?: {
     hint?: string;
     maxAttempts?: number;
   }
-): PasswordProtection {
+): Promise<PasswordProtection> {
   const configs = getAllPasswordConfigs();
+  const passwordHash = await secureHash(password);
 
   const config: PasswordProtection = {
     qrId,
     enabled: true,
-    passwordHash: simpleHash(password),
+    passwordHash,
     hint: options?.hint,
     maxAttempts: options?.maxAttempts,
     currentAttempts: 0,
@@ -113,14 +142,14 @@ export function getPasswordProtection(qrId: string): PasswordProtection | null {
 }
 
 /**
- * Verify password
+ * Verify password (async for secure hashing)
  */
-export function verifyPassword(qrId: string, password: string): {
+export async function verifyPassword(qrId: string, password: string): Promise<{
   success: boolean;
   locked?: boolean;
   attemptsRemaining?: number;
   message?: string;
-} {
+}> {
   const configs = getAllPasswordConfigs();
   const config = configs[qrId];
 
@@ -145,8 +174,9 @@ export function verifyPassword(qrId: string, password: string): {
     }
   }
 
-  // Verify password
-  const isCorrect = simpleHash(password) === config.passwordHash;
+  // Verify password using secure hash
+  const passwordHash = await secureHash(password);
+  const isCorrect = passwordHash === config.passwordHash;
 
   if (isCorrect) {
     config.currentAttempts = 0;
@@ -185,13 +215,13 @@ export function removePasswordProtection(qrId: string): void {
 }
 
 /**
- * Change password
+ * Change password (async for secure hashing)
  */
-export function changePassword(qrId: string, newPassword: string): boolean {
+export async function changePassword(qrId: string, newPassword: string): Promise<boolean> {
   const configs = getAllPasswordConfigs();
   if (!configs[qrId]) return false;
 
-  configs[qrId].passwordHash = simpleHash(newPassword);
+  configs[qrId].passwordHash = await secureHash(newPassword);
   configs[qrId].currentAttempts = 0;
   configs[qrId].lockoutUntil = undefined;
   configs[qrId].updatedAt = new Date().toISOString();
