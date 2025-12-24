@@ -1,0 +1,63 @@
+# QR Code Generator Component Library
+
+Welcome to the QR Code Generator Storybook. This documentation provides an interactive way to explore and understand the components used in the application.
+
+## Getting Started
+
+### Installation
+
+```bash
+npm install
+npm run storybook
+```
+
+### Component Categories
+
+#### Core Components
+- **QR Code Display** - The main QR code visualization component
+- **QR Scanner** - Camera-based QR code scanning
+- **Download Button** - Export QR codes in various formats
+
+#### UI Components
+- **Keyboard Shortcuts Help** - Modal showing available shortcuts
+- **Error Boundary** - Graceful error handling wrapper
+- **Loading Skeleton** - Loading state placeholders
+
+#### Settings Components
+- **Theme Creator** - Custom theme creation interface
+- **Security Settings** - Password protection configuration
+- **Accessibility Settings** - High contrast and screen reader options
+
+#### Advanced Features
+- **Batch Generator** - Generate multiple QR codes
+- **Dynamic QR Manager** - Manage dynamic/editable QR codes
+- **Analytics Dashboard** - View QR code statistics
+
+## Design Principles
+
+1. **Accessibility First** - All components support keyboard navigation and screen readers
+2. **Responsive Design** - Components work on mobile, tablet, and desktop
+3. **Dark Mode Support** - Automatic theme adaptation
+4. **Performance** - Lazy loading for heavy components
+
+## Color Palette
+
+The application uses CSS custom properties for theming:
+
+| Variable | Description |
+|----------|-------------|
+| `--foreground` | Primary text color |
+| `--background` | Page background |
+| `--primary` | Brand/accent color |
+| `--muted` | Subtle backgrounds |
+| `--border` | Border colors |
+
+## Keyboard Shortcuts
+
+Press `?` anywhere in the app to see available shortcuts.
+
+Key shortcuts include:
+- `Ctrl+Enter` - Generate QR code
+- `Ctrl+D` - Download as PNG
+- `Ctrl+H` - Open history
+- `Ctrl+Z` - Undo
