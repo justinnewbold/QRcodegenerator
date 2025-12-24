@@ -45,9 +45,11 @@ export function getStorageUsage(): number {
   if (!isStorageAvailable()) return 0;
 
   let total = 0;
-  for (const key in localStorage) {
-    if (Object.prototype.hasOwnProperty.call(localStorage, key)) {
-      total += (localStorage[key].length + key.length) * 2; // UTF-16 encoding
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key) {
+      const value = localStorage.getItem(key) || '';
+      total += (value.length + key.length) * 2; // UTF-16 encoding
     }
   }
   return total;
