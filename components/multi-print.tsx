@@ -38,7 +38,7 @@ export default function MultiPrint() {
     if (!currentQR) return
 
     const newItem: PrintItem = {
-      id: `item-${Date.now()}`,
+      id: `item-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
       qrDataUrl: currentQR,
       label: currentLabel || `QR ${items.length + 1}`,
     }
@@ -54,7 +54,7 @@ export default function MultiPrint() {
   const duplicateItem = (item: PrintItem) => {
     const newItem: PrintItem = {
       ...item,
-      id: `item-${Date.now()}`,
+      id: `item-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
     }
     setItems([...items, newItem])
   }

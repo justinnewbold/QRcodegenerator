@@ -64,8 +64,8 @@ export function PresetManager({
     }
   }, [isOpen]);
 
-  // Get categories
-  const categories = useMemo(() => getCategories(), [presets]);
+  // Get categories (regenerate when presets change)
+  const categories = useMemo(() => getCategories(), [presets.length]);
 
   // Filter presets
   const filteredPresets = useMemo(() => {

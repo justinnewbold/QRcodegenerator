@@ -125,7 +125,7 @@ export function SecuritySettings({
     }
 
     const newLocation: GeoLocation = {
-      id: `loc-${Date.now()}`,
+      id: `loc-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
       name: newLocationName,
       latitude: lat,
       longitude: lng,
@@ -143,8 +143,8 @@ export function SecuritySettings({
     setLocations(locations.filter(l => l.id !== id));
   };
 
-  // Save password settings
-  const handleSavePassword = () => {
+  // Save password settings (async for secure hashing)
+  const handleSavePassword = async () => {
     if (!qrId) return;
 
     if (!passwordEnabled) {
@@ -171,13 +171,13 @@ export function SecuritySettings({
     }
 
     if (password) {
-      setPasswordProtection(qrId, password, {
+      await setPasswordProtection(qrId, password, {
         hint: hint || undefined,
         maxAttempts: maxAttempts,
       });
     } else if (passwordConfig) {
       // Just update settings without changing password
-      setPasswordProtection(qrId, '', {
+      await setPasswordProtection(qrId, '', {
         hint: hint || undefined,
         maxAttempts: maxAttempts,
       });

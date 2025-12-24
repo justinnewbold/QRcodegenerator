@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   createWebhook,
   getWebhook,
@@ -68,17 +68,17 @@ export function WebhooksManager({
   const [showTemplates, setShowTemplates] = useState(false);
 
   // Load webhooks
+  const loadWebhooks = useCallback(() => {
+    if (qrId) {
+      setWebhooks(getQRWebhooks(qrId));
+    }
+  }, [qrId]);
+
   useEffect(() => {
     if (isOpen && qrId) {
       loadWebhooks();
     }
-  }, [isOpen, qrId]);
-
-  const loadWebhooks = () => {
-    if (qrId) {
-      setWebhooks(getQRWebhooks(qrId));
-    }
-  };
+  }, [isOpen, qrId, loadWebhooks]);
 
   // Load logs for selected webhook
   useEffect(() => {

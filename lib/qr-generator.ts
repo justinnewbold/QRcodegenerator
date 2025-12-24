@@ -146,9 +146,45 @@ export async function generateQRCode(options: QRCodeOptions): Promise<QRCodeResu
     ctx.fillRect(0, 0, size, totalHeight);
   }
 
-  // Calculate module size
-  const moduleCount = Math.sqrt(imageData.data.length / 4);
-  const moduleSize = size / moduleCount;
+  // Calculate module size by detecting the actual QR module boundaries
+  // The imageData contains the rendered QR code - we need to detect the module size
+  // by analyzing the finder pattern (first dark column should be 7 modules wide)
+  const detectModuleSize = (): number => {
+    // Scan horizontally from the left edge to find the first dark pixel (after margin)
+    // Then measure the width of the finder pattern outer square (7 modules)
+    let firstDarkX = -1;
+    let firstLightAfterDarkX = -1;
+
+    // Scan a row in the middle of where the finder pattern should be
+    const scanY = Math.floor(size / 6); // Approximate y position within the finder pattern
+
+    for (let x = 0; x < size; x++) {
+      const idx = (scanY * size + x) * 4;
+      const isDark = imageData.data[idx] < 128;
+
+      if (firstDarkX === -1 && isDark) {
+        firstDarkX = x;
+      } else if (firstDarkX !== -1 && !isDark && firstLightAfterDarkX === -1) {
+        firstLightAfterDarkX = x;
+        break;
+      }
+    }
+
+    if (firstDarkX !== -1 && firstLightAfterDarkX !== -1) {
+      // The first dark segment is the outer edge of the finder (1 module wide)
+      const estimatedModuleSize = firstLightAfterDarkX - firstDarkX;
+      if (estimatedModuleSize > 0) {
+        return estimatedModuleSize;
+      }
+    }
+
+    // Fallback: estimate based on typical QR code (Version 2 = 25 modules is common)
+    // A rendered QR with margin 4 would have effective 25 + 8 = 33 modules
+    return size / 33;
+  };
+
+  const moduleSize = detectModuleSize();
+  const moduleCount = Math.round(size / moduleSize);
 
   // Helper to check if position is a finder pattern corner
   const isFinderPattern = (x: number, y: number) => {

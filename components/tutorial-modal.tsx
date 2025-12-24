@@ -75,7 +75,7 @@ export function TutorialModal({ isOpen, onClose, tutorialId }: TutorialModalProp
   }, [activeTutorial]);
 
   // Handle next step
-  const nextStep = () => {
+  const nextStep = useCallback(() => {
     if (!activeTutorial) return;
 
     if (currentStep < activeTutorial.steps.length - 1) {
@@ -86,14 +86,14 @@ export function TutorialModal({ isOpen, onClose, tutorialId }: TutorialModalProp
       setShowList(true);
       setActiveTutorial(null);
     }
-  };
+  }, [activeTutorial, currentStep, goToStep]);
 
   // Handle previous step
-  const prevStep = () => {
+  const prevStep = useCallback(() => {
     if (currentStep > 0) {
       goToStep(currentStep - 1);
     }
-  };
+  }, [currentStep, goToStep]);
 
   // Start a tutorial
   const handleStartTutorial = (id: string) => {
@@ -131,7 +131,7 @@ export function TutorialModal({ isOpen, onClose, tutorialId }: TutorialModalProp
       window.removeEventListener('keydown', handleEscape);
       window.removeEventListener('keydown', handleArrowKeys);
     };
-  }, [isOpen, activeTutorial, showList, onClose, currentStep]);
+  }, [isOpen, activeTutorial, showList, onClose, nextStep, prevStep]);
 
   if (!isOpen) return null;
 

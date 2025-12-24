@@ -232,9 +232,17 @@ export function exportAnalyticsCSV(): string {
     event.metadata.format || '',
   ])
 
+  // Helper to escape CSV cell values per RFC 4180
+  const escapeCSV = (cell: string | number): string => {
+    const str = String(cell);
+    // Escape quotes by doubling them
+    const escaped = str.replace(/"/g, '""');
+    return `"${escaped}"`;
+  };
+
   const csvContent = [
     headers.join(','),
-    ...rows.map(row => row.map(cell => `"${cell}"`).join(',')),
+    ...rows.map(row => row.map(escapeCSV).join(',')),
   ].join('\n')
 
   return csvContent

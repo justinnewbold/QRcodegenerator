@@ -48,7 +48,8 @@ export function parseCSV(csvContent: string): CSVRow[] {
 }
 
 /**
- * Parse a single CSV line, handling quoted values
+ * Parse a single CSV line, handling quoted values and escaped quotes
+ * Per RFC 4180: double quotes inside quoted fields are escaped by doubling them
  */
 function parseCSVLine(line: string): string[] {
   const result: string[] = []
@@ -57,9 +58,17 @@ function parseCSVLine(line: string): string[] {
 
   for (let i = 0; i < line.length; i++) {
     const char = line[i]
+    const nextChar = line[i + 1]
 
     if (char === '"') {
-      inQuotes = !inQuotes
+      if (inQuotes && nextChar === '"') {
+        // Escaped quote (two consecutive quotes inside quoted field = literal quote)
+        current += '"'
+        i++ // Skip the next quote
+      } else {
+        // Toggle quote mode
+        inQuotes = !inQuotes
+      }
     } else if (char === ',' && !inQuotes) {
       result.push(current.trim())
       current = ''
@@ -118,9 +127,8 @@ export async function generateBulkQRCodes(
         const base64Data = qrDataUrl.dataUrl.split(',')[1]
         zip.file(`${filename}.png`, base64Data, { base64: true })
       } else {
-        // For SVG, we'd need to convert - for now use PNG
-        const base64Data = qrDataUrl.dataUrl.split(',')[1]
-        zip.file(`${filename}.png`, base64Data, { base64: true })
+        // SVG format - use the SVG string from the result
+        zip.file(`${filename}.svg`, qrDataUrl.svg)
       }
 
       result.successful++
