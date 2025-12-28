@@ -123,11 +123,18 @@ export async function generateBulkQRCodes(
 
       // Add to ZIP
       if (options.format === 'png') {
-        // Convert data URL to blob
-        const base64Data = qrDataUrl.dataUrl.split(',')[1]
+        // Convert data URL to blob - validate format first
+        const dataUrlParts = qrDataUrl.dataUrl.split(',')
+        if (dataUrlParts.length < 2 || !dataUrlParts[1]) {
+          throw new Error('Invalid data URL format')
+        }
+        const base64Data = dataUrlParts[1]
         zip.file(`${filename}.png`, base64Data, { base64: true })
       } else {
         // SVG format - use the SVG string from the result
+        if (!qrDataUrl.svg) {
+          throw new Error('SVG data not available')
+        }
         zip.file(`${filename}.svg`, qrDataUrl.svg)
       }
 
@@ -348,13 +355,18 @@ export async function generateBulkQRCodesWithDeduplication(
       filename = filename.replace(/[^a-z0-9_-]/gi, '_');
 
       if (bulkOptions.format === 'png') {
-        const base64Data = qrData.dataUrl.split(',')[1];
-        zip.file(`${filename}.png`, base64Data, { base64: true });
+        const dataUrlParts = qrData.dataUrl.split(',');
+        const base64Data = dataUrlParts.length >= 2 ? dataUrlParts[1] : '';
+        if (base64Data) {
+          zip.file(`${filename}.png`, base64Data, { base64: true });
+          result.successful++;
+        }
       } else {
-        zip.file(`${filename}.svg`, qrData.svg);
+        if (qrData.svg) {
+          zip.file(`${filename}.svg`, qrData.svg);
+          result.successful++;
+        }
       }
-
-      result.successful++;
     }
   }
 

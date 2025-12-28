@@ -189,11 +189,15 @@ export function initOfflineSync(handlers: OperationHandlers): () => void {
 
   const handleOnline = () => {
     console.log('Back online, processing queued operations...');
-    processQueue(handlers).then(result => {
-      if (result.processed > 0) {
-        console.log(`Processed ${result.processed} queued operations`);
-      }
-    });
+    processQueue(handlers)
+      .then(result => {
+        if (result.processed > 0) {
+          console.log(`Processed ${result.processed} queued operations`);
+        }
+      })
+      .catch(error => {
+        console.error('Error processing queued operations:', error);
+      });
   };
 
   window.addEventListener('online', handleOnline);

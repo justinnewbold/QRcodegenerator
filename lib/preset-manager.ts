@@ -472,6 +472,8 @@ function importSinglePreset(data: Partial<QRPreset>): QRPreset | null {
  * Generate a shareable URL for a preset
  */
 export function generatePresetShareUrl(id: string): string | null {
+  if (typeof window === 'undefined') return null;
+
   const preset = getPresetById(id);
   if (!preset) return null;
 

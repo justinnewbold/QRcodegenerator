@@ -295,10 +295,42 @@ async function executeWebhook(
 }
 
 /**
- * Generate webhook signature
+ * Generate webhook signature using HMAC-SHA256
+ * Falls back to a simpler hash if Web Crypto is unavailable
  */
-function generateSignature(payload: string, secret: string): string {
-  // Simple signature - in production use HMAC-SHA256
+async function generateSignatureAsync(payload: string, secret: string): Promise<string> {
+  // Try to use Web Crypto API for proper HMAC-SHA256
+  if (typeof crypto !== 'undefined' && crypto.subtle) {
+    try {
+      const encoder = new TextEncoder();
+      const keyData = encoder.encode(secret);
+      const payloadData = encoder.encode(payload);
+
+      const key = await crypto.subtle.importKey(
+        'raw',
+        keyData,
+        { name: 'HMAC', hash: 'SHA-256' },
+        false,
+        ['sign']
+      );
+
+      const signature = await crypto.subtle.sign('HMAC', key, payloadData);
+      const hashArray = Array.from(new Uint8Array(signature));
+      const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+      return `sha256=${hashHex}`;
+    } catch {
+      // Fall through to fallback
+    }
+  }
+
+  // Fallback: Use a simple hash (clearly labeled as fallback)
+  return generateSignatureFallback(payload, secret);
+}
+
+/**
+ * Synchronous fallback signature (not cryptographically secure)
+ */
+function generateSignatureFallback(payload: string, secret: string): string {
   let hash = 0;
   const combined = payload + secret;
   for (let i = 0; i < combined.length; i++) {
@@ -306,7 +338,15 @@ function generateSignature(payload: string, secret: string): string {
     hash = ((hash << 5) - hash) + char;
     hash = hash & hash;
   }
-  return `sha256=${Math.abs(hash).toString(16)}`;
+  return `simple=${Math.abs(hash).toString(16)}`;
+}
+
+/**
+ * Generate webhook signature (sync wrapper)
+ */
+function generateSignature(payload: string, secret: string): string {
+  // For sync contexts, use the fallback
+  return generateSignatureFallback(payload, secret);
 }
 
 // ============================================

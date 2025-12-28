@@ -295,11 +295,22 @@ export function importBackup(
     }
 
     // Import favorites
+    // Note: backup stores favorites as string[] of qrIds, but storage needs QRFavorite[] objects
     if (backup.data.favorites && backup.data.favorites.length > 0) {
-      const existingFavorites = getFavorites().map(f => f.qrId);
-      const merged = Array.from(new Set([...existingFavorites, ...backup.data.favorites]));
+      const existingFavorites = getFavorites();
+      const existingIds = new Set(existingFavorites.map(f => f.qrId));
+
+      // Convert imported string IDs to QRFavorite objects
+      const newFavorites = backup.data.favorites
+        .filter(qrId => !existingIds.has(qrId))
+        .map(qrId => ({
+          qrId,
+          addedAt: new Date().toISOString(),
+        }));
+
+      const merged = [...existingFavorites, ...newFavorites];
       safeSetItem('qr-favorites', JSON.stringify(merged));
-      result.imported.favorites = backup.data.favorites.length;
+      result.imported.favorites = newFavorites.length;
     }
 
     // Import user preferences
