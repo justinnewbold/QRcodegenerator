@@ -66,16 +66,13 @@ export function exportAllData(): BackupData {
   const favorites = getFavorites().map(f => f.qrId);
 
   // Get user preferences
+  // Note: safeGetItem already returns parsed JSON, so no need to parse again
   const userPreferences: Record<string, unknown> = {};
   const prefKeys = ['user-preferences', 'qr-default-settings', 'accessibility-settings'];
   prefKeys.forEach(key => {
     const value = safeGetItem(key, null);
-    if (value) {
-      try {
-        userPreferences[key] = JSON.parse(value);
-      } catch {
-        userPreferences[key] = value;
-      }
+    if (value !== null) {
+      userPreferences[key] = value;
     }
   });
 
