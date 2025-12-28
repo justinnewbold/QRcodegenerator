@@ -117,7 +117,9 @@ export function getAllTags(): QRTag[] {
 /**
  * Create a new tag
  */
-export function createTag(name: string, color: string = '#3B82F6'): QRTag {
+export function createTag(name: string, color: string = '#3B82F6'): QRTag | null {
+  if (typeof window === 'undefined') return null;
+
   const tags = getAllTags();
 
   const newTag: QRTag = {
@@ -138,6 +140,8 @@ export function createTag(name: string, color: string = '#3B82F6'): QRTag {
  * Update a tag
  */
 export function updateTag(tagId: string, updates: Partial<Pick<QRTag, 'name' | 'color'>>): QRTag | null {
+  if (typeof window === 'undefined') return null;
+
   const tags = getAllTags();
   const index = tags.findIndex(t => t.id === tagId);
 

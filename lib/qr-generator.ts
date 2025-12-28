@@ -221,7 +221,11 @@ export async function generateQRCode(options: QRCodeOptions): Promise<QRCodeResu
   // Draw QR modules with custom style
   for (let y = 0; y < moduleCount; y++) {
     for (let x = 0; x < moduleCount; x++) {
-      const idx = (y * moduleCount + x) * 4;
+      // Sample pixel from the center of each module
+      // imageData has size×size pixels, so we need to convert module coords to pixel coords
+      const pixelX = Math.floor(x * moduleSize + moduleSize / 2);
+      const pixelY = Math.floor(y * moduleSize + moduleSize / 2);
+      const idx = (pixelY * size + pixelX) * 4;
       const isDark = imageData.data[idx] < 128;
 
       if (isDark && !isFinderPattern(x, y)) {

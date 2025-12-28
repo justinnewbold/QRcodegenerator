@@ -169,8 +169,10 @@ export function clearAllQRData(): void {
 
   const keysToRemove: string[] = [];
   for (const key in localStorage) {
-    if (key.startsWith('qr-') || key.startsWith('qr_')) {
-      keysToRemove.push(key);
+    if (Object.prototype.hasOwnProperty.call(localStorage, key)) {
+      if (key.startsWith('qr-') || key.startsWith('qr_')) {
+        keysToRemove.push(key);
+      }
     }
   }
 
