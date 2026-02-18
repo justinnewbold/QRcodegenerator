@@ -44,7 +44,7 @@ function getStats(): StatsData {
 
   try {
     // Aggregate from various localStorage keys
-    const history = JSON.parse(localStorage.getItem('qr-history') || '[]');
+    const history = JSON.parse(localStorage.getItem('qr-generator-history') || '[]');
     const analytics = JSON.parse(localStorage.getItem('qr-analytics') || '{}');
 
     const byType: Record<string, number> = {};

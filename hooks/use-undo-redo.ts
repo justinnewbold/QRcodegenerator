@@ -203,7 +203,7 @@ export function useUndoRedoKeyboard(
         return;
       }
 
-      const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+      const isMac = /Mac|iPhone|iPad|iPod/.test(navigator.userAgent);
       const modifier = isMac ? e.metaKey : e.ctrlKey;
 
       if (modifier && e.key === 'z' && !e.shiftKey && canUndo) {

@@ -210,7 +210,7 @@ export function KeyboardShortcutsHelp({ isOpen: controlledOpen, onClose }: Keybo
                                 {key === 'Ctrl' && (
                                   <Command className="mr-1 h-3 w-3" />
                                 )}
-                                {key === 'Ctrl' ? (navigator.platform.includes('Mac') ? '' : 'Ctrl') : key}
+                                {key === 'Ctrl' ? (/Mac|iPhone|iPad|iPod/.test(navigator.userAgent) ? '' : 'Ctrl') : key}
                               </kbd>
                               {keyIndex < shortcut.keys.length - 1 && (
                                 <span className="text-xs text-muted-foreground">+</span>

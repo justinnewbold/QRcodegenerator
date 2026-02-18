@@ -196,7 +196,7 @@ export function KeyboardShortcutsButton() {
 export function GlobalKeyboardShortcuts() {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+      const isMac = /Mac|iPhone|iPad|iPod/.test(navigator.userAgent);
       const modifier = isMac ? e.metaKey : e.ctrlKey;
 
       // Skip if in input field for most shortcuts

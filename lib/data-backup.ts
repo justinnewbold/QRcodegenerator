@@ -209,7 +209,7 @@ export function importBackup(
         result.imported.history = backup.data.history.length;
       }
 
-      safeSetItem('qr-history', JSON.stringify(newHistory));
+      safeSetItem('qr-generator-history', JSON.stringify(newHistory));
     }
 
     // Import presets
@@ -227,7 +227,7 @@ export function importBackup(
         result.imported.presets = backup.data.presets.length;
       }
 
-      safeSetItem('qr-user-presets', JSON.stringify(newPresets));
+      safeSetItem('qr-presets', JSON.stringify(newPresets));
     }
 
     // Import themes
@@ -296,10 +296,14 @@ export function importBackup(
 
     // Import favorites
     if (backup.data.favorites && backup.data.favorites.length > 0) {
-      const existingFavorites = getFavorites().map(f => f.qrId);
-      const merged = Array.from(new Set([...existingFavorites, ...backup.data.favorites]));
+      const existingFavorites = getFavorites();
+      const existingIds = new Set(existingFavorites.map(f => f.qrId));
+      const newFavorites = backup.data.favorites
+        .filter(id => !existingIds.has(id))
+        .map(id => ({ qrId: id, addedAt: new Date().toISOString() }));
+      const merged = [...existingFavorites, ...newFavorites];
       safeSetItem('qr-favorites', JSON.stringify(merged));
-      result.imported.favorites = backup.data.favorites.length;
+      result.imported.favorites = newFavorites.length;
     }
 
     // Import user preferences
@@ -397,8 +401,8 @@ export function getBackupSizeEstimate(): { bytes: number; formatted: string } {
  */
 export function clearAllData(): void {
   const keys = [
-    'qr-history',
-    'qr-user-presets',
+    'qr-generator-history',
+    'qr-presets',
     'qr-custom-themes',
     'qr-brand-kits',
     'qr-dynamic-codes',

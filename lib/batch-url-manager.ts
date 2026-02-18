@@ -36,7 +36,7 @@ export function findQRsByUrl(pattern: string, exact: boolean = false): URLMatch[
   if (typeof window === 'undefined') return [];
 
   try {
-    const history = JSON.parse(localStorage.getItem('qr-history') || '[]');
+    const history = JSON.parse(localStorage.getItem('qr-generator-history') || '[]');
     const matches: URLMatch[] = [];
 
     history.forEach((item: {
@@ -99,7 +99,7 @@ export function getAllUrls(): { url: string; count: number; qrIds: string[] }[] 
   if (typeof window === 'undefined') return [];
 
   try {
-    const history = JSON.parse(localStorage.getItem('qr-history') || '[]');
+    const history = JSON.parse(localStorage.getItem('qr-generator-history') || '[]');
     const urlMap = new Map<string, { count: number; qrIds: string[] }>();
 
     history.forEach((item: {
@@ -184,7 +184,7 @@ export function applyUrlReplacement(
   }
 
   try {
-    const history = JSON.parse(localStorage.getItem('qr-history') || '[]');
+    const history = JSON.parse(localStorage.getItem('qr-generator-history') || '[]');
     const updates: BulkUpdateResult['updates'] = [];
     let totalUpdated = 0;
     let totalFailed = 0;
@@ -241,7 +241,7 @@ export function applyUrlReplacement(
     });
 
     // Save updated history
-    localStorage.setItem('qr-history', JSON.stringify(updatedHistory));
+    localStorage.setItem('qr-generator-history', JSON.stringify(updatedHistory));
 
     // Dispatch event to notify other components
     window.dispatchEvent(new CustomEvent('qr-history-updated'));
@@ -275,7 +275,7 @@ export function replaceDomain(
   }
 
   try {
-    const history = JSON.parse(localStorage.getItem('qr-history') || '[]');
+    const history = JSON.parse(localStorage.getItem('qr-generator-history') || '[]');
     const updates: BulkUpdateResult['updates'] = [];
     let totalUpdated = 0;
     let totalFailed = 0;
@@ -329,7 +329,7 @@ export function replaceDomain(
       }
     });
 
-    localStorage.setItem('qr-history', JSON.stringify(updatedHistory));
+    localStorage.setItem('qr-generator-history', JSON.stringify(updatedHistory));
     window.dispatchEvent(new CustomEvent('qr-history-updated'));
 
     return { totalUpdated, totalFailed, updates };
