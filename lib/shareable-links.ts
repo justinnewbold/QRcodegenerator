@@ -76,8 +76,9 @@ export function encodeQRConfig(config: ShareableQRConfig): string {
   }
 
   // Use base64url encoding for URL safety
+  // Encode via encodeURIComponent first to handle Unicode chars that btoa can't
   const json = JSON.stringify(minified);
-  const encoded = btoa(json)
+  const encoded = btoa(unescape(encodeURIComponent(json)))
     .replace(/\+/g, '-')
     .replace(/\//g, '_')
     .replace(/=/g, '');
@@ -96,7 +97,7 @@ export function decodeQRConfig(encoded: string): ShareableQRConfig | null {
       padded += '=';
     }
 
-    const json = atob(padded);
+    const json = decodeURIComponent(escape(atob(padded)));
     const minified = JSON.parse(json);
     const config: Partial<ShareableQRConfig> = {};
 

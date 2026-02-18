@@ -209,7 +209,7 @@ export function importBackup(
         result.imported.history = backup.data.history.length;
       }
 
-      safeSetItem('qr-generator-history', JSON.stringify(newHistory));
+      safeSetItem('qr-generator-history', newHistory);
     }
 
     // Import presets
@@ -227,7 +227,7 @@ export function importBackup(
         result.imported.presets = backup.data.presets.length;
       }
 
-      safeSetItem('qr-presets', JSON.stringify(newPresets));
+      safeSetItem('qr-presets', newPresets);
     }
 
     // Import themes
@@ -245,7 +245,7 @@ export function importBackup(
         result.imported.themes = backup.data.themes.length;
       }
 
-      safeSetItem('qr-custom-themes', JSON.stringify(newThemes));
+      safeSetItem('qr-custom-themes', newThemes);
     }
 
     // Import brand kits
@@ -263,7 +263,7 @@ export function importBackup(
         result.imported.brandKits = backup.data.brandKits.length;
       }
 
-      safeSetItem('qr-brand-kits', JSON.stringify(newKits));
+      safeSetItem('qr-brand-kits', newKits);
     }
 
     // Import dynamic QRs
@@ -281,7 +281,7 @@ export function importBackup(
         result.imported.dynamicQRs = backup.data.dynamicQRs.length;
       }
 
-      safeSetItem('qr-dynamic-codes', JSON.stringify(newQRs));
+      safeSetItem('qr-dynamic-codes', newQRs);
     }
 
     // Import analytics (optional, can be large)
@@ -290,7 +290,7 @@ export function importBackup(
       const existingIds = new Set(existingAnalytics.map(a => a.id));
       const newItems = backup.data.analytics.filter(a => !existingIds.has(a.id));
       const merged = [...existingAnalytics, ...newItems].slice(-1000); // Keep max 1000
-      safeSetItem('qr-analytics-events', JSON.stringify(merged));
+      safeSetItem('qr-analytics-events', merged);
       result.imported.analytics = newItems.length;
     }
 
@@ -302,7 +302,7 @@ export function importBackup(
         .filter(id => !existingIds.has(id))
         .map(id => ({ qrId: id, addedAt: new Date().toISOString() }));
       const merged = [...existingFavorites, ...newFavorites];
-      safeSetItem('qr-favorites', JSON.stringify(merged));
+      safeSetItem('qr-favorites', merged);
       result.imported.favorites = newFavorites.length;
     }
 

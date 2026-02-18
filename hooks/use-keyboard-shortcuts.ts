@@ -36,7 +36,9 @@ export function useKeyboardShortcuts(shortcuts: KeyboardShortcut[]) {
 }
 
 export function getShortcutDisplay(shortcut: KeyboardShortcut): string {
-  const isMac = /Mac|iPhone|iPad|iPod/.test(navigator.userAgent);
+  const isMac = typeof navigator !== 'undefined'
+    ? /Mac|iPhone|iPad|iPod/.test(navigator.userAgent)
+    : false;
   const parts: string[] = [];
 
   if (shortcut.ctrlOrCmd) {
