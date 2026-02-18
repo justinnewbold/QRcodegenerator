@@ -92,10 +92,8 @@ export function useQRCapacity(
     const maxCapacity = QR_VERSIONS[QR_VERSIONS.length - 1];
     const maxCapacityForLevel = getCapacityForLevel(maxCapacity, errorCorrectionLevel);
 
-    // Calculate usage percentage
-    const usagePercent = requiredVersion
-      ? Math.round((contentSize / getCapacityForLevel(requiredVersion, errorCorrectionLevel)) * 100)
-      : Math.round((contentSize / maxCapacityForLevel) * 100);
+    // Calculate usage percentage against max capacity for the error correction level
+    const usagePercent = Math.round((contentSize / maxCapacityForLevel) * 100);
 
     // Determine warning level
     let warningLevel: 'ok' | 'warning' | 'danger' | 'overflow';
@@ -165,9 +163,7 @@ export function getQRCapacityInfo(
   const maxCapacity = QR_VERSIONS[QR_VERSIONS.length - 1];
   const maxCapacityForLevel = getCapacityForLevel(maxCapacity, errorCorrectionLevel);
 
-  const usagePercent = requiredVersion
-    ? Math.round((contentSize / getCapacityForLevel(requiredVersion, errorCorrectionLevel)) * 100)
-    : Math.round((contentSize / maxCapacityForLevel) * 100);
+  const usagePercent = Math.round((contentSize / maxCapacityForLevel) * 100);
 
   let warningLevel: 'ok' | 'warning' | 'danger' | 'overflow';
   if (!requiredVersion) {

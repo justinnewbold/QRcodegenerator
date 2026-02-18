@@ -35,7 +35,7 @@ export function saveTemplate(template: Omit<QRTemplate, 'id' | 'timestamp'>): vo
   const templates = getTemplates();
   const newTemplate: QRTemplate = {
     ...template,
-    id: `template-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+    id: `template-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`,
     timestamp: Date.now(),
   };
 
