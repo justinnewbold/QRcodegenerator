@@ -236,7 +236,8 @@ export function getAllExpiringQRCodes(): ExpiringQRConfig[] {
  */
 export function getSoonToExpire(withinDays: number = 7): ExpiringQRConfig[] {
   const configs = getAllConfigs();
-  const cutoff = new Date();
+  const now = new Date();
+  const cutoff = new Date(now.getTime());
   cutoff.setDate(cutoff.getDate() + withinDays);
 
   return Object.values(configs).filter(c => {
@@ -245,7 +246,7 @@ export function getSoonToExpire(withinDays: number = 7): ExpiringQRConfig[] {
     // Check date
     if (c.expiresAt) {
       const expiryDate = new Date(c.expiresAt);
-      if (expiryDate <= cutoff && expiryDate > new Date()) {
+      if (expiryDate <= cutoff && expiryDate > now) {
         return true;
       }
     }

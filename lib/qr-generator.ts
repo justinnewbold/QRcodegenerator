@@ -644,17 +644,24 @@ export function generateMeetingString(platform: 'zoom' | 'teams' | 'meet', meeti
 }
 
 export function generatePayPalString(email: string, amount?: string, currency: string = 'USD', note?: string): string {
-  // PayPal.me format
-  const cleanEmail = email.replace('@', '').replace(/\./g, '');
-  let result = `https://paypal.me/${email}`;
+  let result: string;
 
-  // If it's not a paypal.me username, use standard paypal link
   if (email.includes('@')) {
-    result = `https://www.paypal.com/paypalme/${cleanEmail}`;
-  }
-
-  if (amount) {
-    result += `/${amount}${currency}`;
+    // Email address - use PayPal business payment URL
+    const params = new URLSearchParams({
+      cmd: '_xclick',
+      business: email,
+      currency_code: currency,
+    });
+    if (amount) params.set('amount', amount);
+    if (note) params.set('item_name', note);
+    result = `https://www.paypal.com/cgi-bin/webscr?${params.toString()}`;
+  } else {
+    // PayPal.me username
+    result = `https://paypal.me/${email}`;
+    if (amount) {
+      result += `/${amount}${currency}`;
+    }
   }
 
   return result;

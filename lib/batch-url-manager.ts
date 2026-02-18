@@ -294,20 +294,22 @@ export function replaceDomain(
         let updated = false;
 
         // Replace in content
+        domainRegex.lastIndex = 0;
         if (domainRegex.test(item.content)) {
+          domainRegex.lastIndex = 0;
           item.content = item.content.replace(domainRegex, `$1${normalizedNew}$3`);
           updated = true;
-          domainRegex.lastIndex = 0; // Reset regex
         }
 
         // Replace in data fields
         if (item.data) {
           Object.keys(item.data).forEach(field => {
             const value = item.data![field];
+            domainRegex.lastIndex = 0;
             if (typeof value === 'string' && domainRegex.test(value)) {
+              domainRegex.lastIndex = 0;
               item.data![field] = value.replace(domainRegex, `$1${normalizedNew}$3`);
               updated = true;
-              domainRegex.lastIndex = 0;
             }
           });
         }

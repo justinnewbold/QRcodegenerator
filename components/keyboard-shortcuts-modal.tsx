@@ -161,7 +161,8 @@ export function KeyboardShortcutsButton() {
       if (
         e.target instanceof HTMLInputElement ||
         e.target instanceof HTMLTextAreaElement ||
-        e.target instanceof HTMLSelectElement
+        e.target instanceof HTMLSelectElement ||
+        (e.target instanceof HTMLElement && e.target.isContentEditable)
       ) {
         return;
       }
@@ -203,7 +204,8 @@ export function GlobalKeyboardShortcuts() {
       const isInputField =
         e.target instanceof HTMLInputElement ||
         e.target instanceof HTMLTextAreaElement ||
-        e.target instanceof HTMLSelectElement;
+        e.target instanceof HTMLSelectElement ||
+        (e.target instanceof HTMLElement && e.target.isContentEditable);
 
       // Ctrl/⌘ + J - Toggle theme
       if (modifier && e.key === 'j' && !e.shiftKey) {
