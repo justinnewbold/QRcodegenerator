@@ -60,7 +60,10 @@ export function PWARegister() {
     const handleBeforeInstallPrompt = (e: Event) => {
       e.preventDefault();
       setDeferredPrompt(e as BeforeInstallPromptEvent);
-      setShowInstallPrompt(true);
+      // Only show if not already dismissed this session
+      if (!sessionStorage.getItem('pwa-install-dismissed')) {
+        setShowInstallPrompt(true);
+      }
     };
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
@@ -101,13 +104,6 @@ export function PWARegister() {
     // Don't show again for this session
     sessionStorage.setItem('pwa-install-dismissed', 'true');
   };
-
-  // Check if already dismissed this session
-  useEffect(() => {
-    if (sessionStorage.getItem('pwa-install-dismissed')) {
-      setShowInstallPrompt(false);
-    }
-  }, []);
 
   return (
     <>

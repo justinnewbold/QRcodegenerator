@@ -489,9 +489,9 @@ export function generateVCardString(data: VCardData): string {
   if (data.note) lines.push(`NOTE:${escapeVCardValue(data.note)}`);
 
   // Social media links
-  if (data.twitter) lines.push(`X-SOCIALPROFILE;TYPE=twitter:https://twitter.com/${data.twitter.replace('@', '')}`);
+  if (data.twitter) lines.push(`X-SOCIALPROFILE;TYPE=twitter:https://twitter.com/${data.twitter.replace(/@/g, '')}`);
   if (data.linkedin) lines.push(`X-SOCIALPROFILE;TYPE=linkedin:${data.linkedin.startsWith('http') ? data.linkedin : 'https://linkedin.com/in/' + data.linkedin}`);
-  if (data.instagram) lines.push(`X-SOCIALPROFILE;TYPE=instagram:https://instagram.com/${data.instagram.replace('@', '')}`);
+  if (data.instagram) lines.push(`X-SOCIALPROFILE;TYPE=instagram:https://instagram.com/${data.instagram.replace(/@/g, '')}`);
 
   lines.push('END:VCARD');
   return lines.join('\n');
@@ -591,7 +591,7 @@ export function generateAppStoreString(platform: 'ios' | 'android', appId: strin
 }
 
 export function generateSocialMediaString(platform: string, username: string): string {
-  const cleanUsername = username.replace('@', '');
+  const cleanUsername = username.replace(/@/g, '');
 
   switch (platform) {
     case 'twitter':

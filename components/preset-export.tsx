@@ -99,9 +99,9 @@ export default function PresetExport({ qrDataUrl, onClose }: PresetExportProps) 
             </TabsList>
 
             <TabsContent value={selectedCategory} className="space-y-3 mt-4">
-              {categoryPresets.map((preset, idx) => (
+              {categoryPresets.map((preset) => (
                 <div
-                  key={idx}
+                  key={preset.name}
                   className="flex items-center justify-between p-4 border rounded-lg hover:bg-accent/50 transition-colors"
                 >
                   <div className="flex-1">
