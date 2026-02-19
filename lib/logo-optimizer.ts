@@ -60,7 +60,7 @@ export async function analyzeLogo(imageDataUrl: string): Promise<LogoAnalysis> {
         .sort((a, b) => b[1] - a[1])
         .slice(0, 3)
         .map(([key]) => {
-          const [r, g, b] = key.split(',').map(v => Math.min(255, parseInt(v) * 32));
+          const [r, g, b] = key.split(',').map(v => Math.min(255, parseInt(v) * 32 + 16));
           return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
         });
 

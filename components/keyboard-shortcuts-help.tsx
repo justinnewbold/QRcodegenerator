@@ -207,10 +207,11 @@ export function KeyboardShortcutsHelp({ isOpen: controlledOpen, onClose }: Keybo
                           {shortcut.keys.map((key, keyIndex) => (
                             <span key={keyIndex} className="flex items-center gap-1">
                               <kbd className="inline-flex min-w-[24px] items-center justify-center rounded bg-muted px-2 py-1 text-xs font-medium text-foreground shadow-sm">
-                                {key === 'Ctrl' && (
-                                  <Command className="mr-1 h-3 w-3" />
-                                )}
-                                {key === 'Ctrl' ? (/Mac|iPhone|iPad|iPod/.test(navigator.userAgent) ? '' : 'Ctrl') : key}
+                                {key === 'Ctrl' ? (
+                                  /Mac|iPhone|iPad|iPod/.test(navigator.userAgent)
+                                    ? <><Command className="mr-1 h-3 w-3" />⌘</>
+                                    : 'Ctrl'
+                                ) : key}
                               </kbd>
                               {keyIndex < shortcut.keys.length - 1 && (
                                 <span className="text-xs text-muted-foreground">+</span>
