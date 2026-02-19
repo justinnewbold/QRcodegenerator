@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useOnlineStatus } from '@/hooks/use-online-status';
 
 interface BeforeInstallPromptEvent extends Event {
   readonly platforms: string[];
@@ -12,7 +13,7 @@ interface BeforeInstallPromptEvent extends Event {
 }
 
 export function PWARegister() {
-  const [isOnline, setIsOnline] = useState(true);
+  const isOnline = useOnlineStatus();
   const [showInstallPrompt, setShowInstallPrompt] = useState(false);
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [isInstalled, setIsInstalled] = useState(false);
@@ -48,14 +49,6 @@ export function PWARegister() {
         });
     }
 
-    // Handle online/offline status
-    const handleOnline = () => setIsOnline(true);
-    const handleOffline = () => setIsOnline(false);
-
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
-    setIsOnline(navigator.onLine);
-
     // Handle install prompt
     const handleBeforeInstallPrompt = (e: Event) => {
       e.preventDefault();
@@ -78,8 +71,6 @@ export function PWARegister() {
     window.addEventListener('appinstalled', handleAppInstalled);
 
     return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
       window.removeEventListener('appinstalled', handleAppInstalled);
     };

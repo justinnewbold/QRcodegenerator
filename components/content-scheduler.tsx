@@ -79,7 +79,8 @@ export function ContentScheduler({
     }
   }, [isOpen, currentContent, currentType]);
 
-  // Get changes based on context
+  // Get changes based on context - recalculate when dialog opens or after mutations
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const changes = useMemo(() => {
     if (qrId) {
       return getQRScheduledChanges(qrId);
@@ -87,7 +88,9 @@ export function ContentScheduler({
     return getPendingChanges();
   }, [qrId, isOpen, success]);
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const stats = useMemo(() => getSchedulerStats(), [isOpen, success]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const upcomingChanges = useMemo(() => getUpcomingChanges(10), [isOpen, success]);
 
   // Handle schedule submission

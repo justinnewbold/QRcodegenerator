@@ -1,8 +1,21 @@
 import BatchGenerator from "@/components/batch-generator"
 import { ThemeToggle } from "@/components/theme-toggle"
+import { ErrorBoundary } from "@/components/error-boundary"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Home, ScanLine, Grid3x3 } from "lucide-react"
+import type { Metadata } from "next"
+
+export const metadata: Metadata = {
+  title: "Batch QR Code Generator - Create Multiple QR Codes | newbold.cloud",
+  description: "Generate multiple QR codes at once from CSV data. Batch create QR codes for URLs, contacts, and more with our free bulk QR code generator.",
+  openGraph: {
+    title: "Batch QR Code Generator - Create Multiple QR Codes",
+    description: "Generate multiple QR codes at once from CSV data",
+    type: "website",
+    url: "https://newbold.cloud/batch",
+  },
+}
 
 export default function BatchPage() {
   return (
@@ -26,7 +39,9 @@ export default function BatchPage() {
         <ThemeToggle />
       </div>
       <div className="py-8">
-        <BatchGenerator />
+        <ErrorBoundary>
+          <BatchGenerator />
+        </ErrorBoundary>
       </div>
       <footer className="text-center py-8 text-sm text-muted-foreground border-t">
         <p>

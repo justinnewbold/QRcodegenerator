@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useMemo } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Input } from "@/components/ui/input"
@@ -229,7 +229,7 @@ export default function QRCodeGenerator() {
   }, [])
 
   // Keyboard shortcuts
-  const shortcuts: KeyboardShortcut[] = [
+  const shortcuts = useMemo<KeyboardShortcut[]>(() => [
     {
       key: 'g',
       ctrlOrCmd: true,
@@ -274,7 +274,8 @@ export default function QRCodeGenerator() {
       description: 'Show Shortcuts Help',
       action: () => setShowShortcuts(true)
     }
-  ]
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  ], [content, qrDataUrl, showShortcuts])
 
   useKeyboardShortcuts(shortcuts)
 

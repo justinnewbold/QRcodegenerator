@@ -1,8 +1,21 @@
 import MultiPrint from "@/components/multi-print"
 import { ThemeToggle } from "@/components/theme-toggle"
+import { ErrorBoundary } from "@/components/error-boundary"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Home, ScanLine, Package } from "lucide-react"
+import type { Metadata } from "next"
+
+export const metadata: Metadata = {
+  title: "Multi-Print QR Codes - Print Multiple QR Codes | newbold.cloud",
+  description: "Create and print multiple QR codes in custom layouts. Design printable sheets of QR codes for labels, business cards, and more.",
+  openGraph: {
+    title: "Multi-Print QR Codes - Print Multiple QR Codes",
+    description: "Create and print multiple QR codes in custom layouts",
+    type: "website",
+    url: "https://newbold.cloud/multi-print",
+  },
+}
 
 export default function MultiPrintPage() {
   return (
@@ -26,7 +39,9 @@ export default function MultiPrintPage() {
         <ThemeToggle />
       </div>
       <div className="py-8">
-        <MultiPrint />
+        <ErrorBoundary>
+          <MultiPrint />
+        </ErrorBoundary>
       </div>
       <footer className="text-center py-8 text-sm text-muted-foreground border-t">
         <p>

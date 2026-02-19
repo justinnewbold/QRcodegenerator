@@ -74,7 +74,7 @@ AlsoValid,https://test.com,Another desc`;
     it('should throw error for empty CSV', () => {
       const csv = '';
 
-      expect(() => parseCSV(csv)).toThrow();
+      expect(() => parseCSV(csv)).toThrow('CSV must have');
     });
 
     it('should handle empty values', () => {

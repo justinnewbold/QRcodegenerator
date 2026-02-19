@@ -36,7 +36,7 @@ export default function DragDropUpload({
     setIsDragging(false)
   }, [])
 
-  const validateFile = (file: File): boolean => {
+  const validateFile = useCallback((file: File): boolean => {
     setError('')
 
     // Check file type
@@ -53,7 +53,7 @@ export default function DragDropUpload({
     }
 
     return true
-  }
+  }, [maxSize])
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault()
@@ -67,7 +67,7 @@ export default function DragDropUpload({
         onFileSelect(file)
       }
     }
-  }, [onFileSelect, maxSize])
+  }, [onFileSelect, validateFile])
 
   const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files

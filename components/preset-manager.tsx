@@ -65,7 +65,8 @@ export function PresetManager({
   }, [isOpen]);
 
   // Get categories (regenerate when presets change)
-  const categories = useMemo(() => getCategories(), [presets.length]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const categories = useMemo(() => getCategories(), [presets]);
 
   // Filter presets
   const filteredPresets = useMemo(() => {
