@@ -17,6 +17,7 @@ import {
   getCategories,
   searchPresets,
 } from '@/lib/preset-manager';
+import { safeClipboardWrite, COPY_FEEDBACK_DURATION_MS } from '@/lib/constants';
 import {
   Layers,
   X,
@@ -151,9 +152,11 @@ export function PresetManager({
     if (json) {
       const encoded = btoa(json).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
       const url = `${window.location.origin}/?preset=${encoded.slice(0, 100)}`;
-      await navigator.clipboard.writeText(url);
-      setCopiedUrl(id);
-      setTimeout(() => setCopiedUrl(null), 2000);
+      const success = await safeClipboardWrite(url);
+      if (success) {
+        setCopiedUrl(id);
+        setTimeout(() => setCopiedUrl(null), COPY_FEEDBACK_DURATION_MS);
+      }
     }
   };
 

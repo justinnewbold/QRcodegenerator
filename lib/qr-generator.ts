@@ -1,5 +1,6 @@
 import QRCode from 'qrcode';
 import jsPDF from 'jspdf';
+import { loadImageWithTimeout, DEFAULT_LOGO_SIZE_RATIO } from './constants';
 
 export type ErrorCorrectionLevel = 'L' | 'M' | 'Q' | 'H';
 export type QRStyle = 'squares' | 'dots' | 'rounded' | 'extra-rounded' | 'classy';
@@ -54,7 +55,7 @@ export async function generateQRCode(options: QRCodeOptions): Promise<QRCodeResu
     backgroundColor,
     margin,
     logoUrl,
-    logoSize = 0.2,
+    logoSize = DEFAULT_LOGO_SIZE_RATIO,
     style = 'squares',
     gradient,
     finderPattern = 'square',
@@ -99,12 +100,7 @@ export async function generateQRCode(options: QRCodeOptions): Promise<QRCodeResu
   canvas.height = totalHeight;
 
   // Load base QR code
-  const qrImage = new Image();
-  await new Promise((resolve, reject) => {
-    qrImage.onload = resolve;
-    qrImage.onerror = reject;
-    qrImage.src = dataUrl;
-  });
+  const qrImage = await loadImageWithTimeout(dataUrl);
 
   // Get QR code data for custom styling
   const tempCanvas = document.createElement('canvas');
@@ -120,13 +116,7 @@ export async function generateQRCode(options: QRCodeOptions): Promise<QRCodeResu
   // Clear canvas with background
   if (backgroundImageUrl) {
     // Load and draw background image
-    const bgImage = new Image();
-    bgImage.crossOrigin = 'anonymous';
-    await new Promise((resolve, reject) => {
-      bgImage.onload = resolve;
-      bgImage.onerror = reject;
-      bgImage.src = backgroundImageUrl;
-    });
+    const bgImage = await loadImageWithTimeout(backgroundImageUrl, undefined, 'anonymous');
 
     // Draw background image (cover fit)
     const scale = Math.max(size / bgImage.width, size / bgImage.height);
@@ -333,13 +323,7 @@ export async function generateQRCode(options: QRCodeOptions): Promise<QRCodeResu
 
   // Add logo if provided
   if (logoUrl) {
-    const logo = new Image();
-    logo.crossOrigin = 'anonymous';
-    await new Promise((resolve, reject) => {
-      logo.onload = resolve;
-      logo.onerror = reject;
-      logo.src = logoUrl;
-    });
+    const logo = await loadImageWithTimeout(logoUrl, undefined, 'anonymous');
 
     const logoSizePixels = size * logoSize;
     const logoX = (size - logoSizePixels) / 2;
