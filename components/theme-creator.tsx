@@ -13,6 +13,7 @@ import {
   importTheme,
   applyTheme,
 } from '@/lib/custom-themes';
+import { safeClipboardWrite, COPY_FEEDBACK_DURATION_MS } from '@/lib/constants';
 import {
   Palette,
   X,
@@ -179,9 +180,11 @@ export function ThemeCreator({ isOpen, onClose }: ThemeCreatorProps) {
       c: theme.colors,
     }))}`;
 
-    await navigator.clipboard.writeText(url);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    const success = await safeClipboardWrite(url);
+    if (success) {
+      setCopied(true);
+      setTimeout(() => setCopied(false), COPY_FEEDBACK_DURATION_MS);
+    }
   };
 
   // Handle escape key

@@ -89,7 +89,7 @@ export function getFavoriteQRCodes(): unknown[] {
   if (typeof window === 'undefined') return [];
 
   try {
-    const history = JSON.parse(localStorage.getItem('qr-history') || '[]');
+    const history = JSON.parse(localStorage.getItem('qr-generator-history') || '[]');
     const favoriteIds = new Set(getFavorites().map(f => f.qrId));
     return history.filter((qr: { id: string }) => favoriteIds.has(qr.id));
   } catch {
@@ -166,14 +166,14 @@ export function deleteTag(tagId: string): void {
 
   // Remove tag from all QR codes
   try {
-    const history = JSON.parse(localStorage.getItem('qr-history') || '[]');
+    const history = JSON.parse(localStorage.getItem('qr-generator-history') || '[]');
     const updatedHistory = history.map((qr: { tags?: string[] }) => {
       if (qr.tags) {
         qr.tags = qr.tags.filter((t: string) => t !== tagId);
       }
       return qr;
     });
-    localStorage.setItem('qr-history', JSON.stringify(updatedHistory));
+    localStorage.setItem('qr-generator-history', JSON.stringify(updatedHistory));
   } catch {
     // Ignore errors
   }
@@ -188,7 +188,7 @@ export function getQRTags(qrId: string): QRTag[] {
   if (typeof window === 'undefined') return [];
 
   try {
-    const history = JSON.parse(localStorage.getItem('qr-history') || '[]');
+    const history = JSON.parse(localStorage.getItem('qr-generator-history') || '[]');
     const qr = history.find((q: { id: string }) => q.id === qrId);
 
     if (!qr || !qr.tags) return [];
@@ -207,7 +207,7 @@ export function addTagToQR(qrId: string, tagId: string): void {
   if (typeof window === 'undefined') return;
 
   try {
-    const history = JSON.parse(localStorage.getItem('qr-history') || '[]');
+    const history = JSON.parse(localStorage.getItem('qr-generator-history') || '[]');
     const index = history.findIndex((qr: { id: string }) => qr.id === qrId);
 
     if (index === -1) return;
@@ -218,7 +218,7 @@ export function addTagToQR(qrId: string, tagId: string): void {
 
     if (!history[index].tags.includes(tagId)) {
       history[index].tags.push(tagId);
-      localStorage.setItem('qr-history', JSON.stringify(history));
+      localStorage.setItem('qr-generator-history', JSON.stringify(history));
       window.dispatchEvent(new CustomEvent('qr-history-updated'));
     }
   } catch {
@@ -233,13 +233,13 @@ export function removeTagFromQR(qrId: string, tagId: string): void {
   if (typeof window === 'undefined') return;
 
   try {
-    const history = JSON.parse(localStorage.getItem('qr-history') || '[]');
+    const history = JSON.parse(localStorage.getItem('qr-generator-history') || '[]');
     const index = history.findIndex((qr: { id: string }) => qr.id === qrId);
 
     if (index === -1 || !history[index].tags) return;
 
     history[index].tags = history[index].tags.filter((t: string) => t !== tagId);
-    localStorage.setItem('qr-history', JSON.stringify(history));
+    localStorage.setItem('qr-generator-history', JSON.stringify(history));
     window.dispatchEvent(new CustomEvent('qr-history-updated'));
   } catch {
     // Ignore errors
@@ -253,7 +253,7 @@ export function getQRCodesByTag(tagId: string): unknown[] {
   if (typeof window === 'undefined') return [];
 
   try {
-    const history = JSON.parse(localStorage.getItem('qr-history') || '[]');
+    const history = JSON.parse(localStorage.getItem('qr-generator-history') || '[]');
     return history.filter((qr: { tags?: string[] }) => qr.tags?.includes(tagId));
   } catch {
     return [];
@@ -267,7 +267,7 @@ export function filterByTags(tagIds: string[]): unknown[] {
   if (typeof window === 'undefined' || tagIds.length === 0) return [];
 
   try {
-    const history = JSON.parse(localStorage.getItem('qr-history') || '[]');
+    const history = JSON.parse(localStorage.getItem('qr-generator-history') || '[]');
     return history.filter((qr: { tags?: string[] }) =>
       tagIds.every(tagId => qr.tags?.includes(tagId))
     );
@@ -287,7 +287,7 @@ export function duplicateQRCode(qrId: string, newName?: string): string | null {
   if (typeof window === 'undefined') return null;
 
   try {
-    const history = JSON.parse(localStorage.getItem('qr-history') || '[]');
+    const history = JSON.parse(localStorage.getItem('qr-generator-history') || '[]');
     const original = history.find((qr: { id: string }) => qr.id === qrId);
 
     if (!original) return null;
@@ -304,7 +304,7 @@ export function duplicateQRCode(qrId: string, newName?: string): string | null {
     };
 
     history.unshift(duplicate);
-    localStorage.setItem('qr-history', JSON.stringify(history));
+    localStorage.setItem('qr-generator-history', JSON.stringify(history));
     window.dispatchEvent(new CustomEvent('qr-history-updated'));
 
     return duplicate.id;

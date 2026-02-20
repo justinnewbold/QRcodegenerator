@@ -4,7 +4,8 @@ import { useState, useRef, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { X, Camera, Upload, AlertCircle, CheckCircle2, Copy, ExternalLink, Scan } from "lucide-react"
+import { X, Camera, Upload, AlertCircle, CheckCircle2, Copy, ExternalLink, Scan, Check } from "lucide-react"
+import { isSafeUrl, safeClipboardWrite, COPY_FEEDBACK_DURATION_MS } from "@/lib/constants"
 import {
   startCameraStream,
   stopCameraStream,
@@ -118,15 +119,15 @@ export default function SmartQRScanner({ onClose, onScanComplete }: SmartQRScann
     }
   }
 
-  const copyToClipboard = () => {
+  const copyToClipboard = async () => {
     if (result) {
-      navigator.clipboard.writeText(result)
+      await safeClipboardWrite(result)
     }
   }
 
   const openLink = () => {
-    if (result && (result.startsWith('http://') || result.startsWith('https://'))) {
-      window.open(result, '_blank')
+    if (result && isSafeUrl(result)) {
+      window.open(result, '_blank', 'noopener,noreferrer')
     }
   }
 

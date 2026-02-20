@@ -60,7 +60,7 @@ export async function analyzeLogo(imageDataUrl: string): Promise<LogoAnalysis> {
         .sort((a, b) => b[1] - a[1])
         .slice(0, 3)
         .map(([key]) => {
-          const [r, g, b] = key.split(',').map(v => parseInt(v) * 32);
+          const [r, g, b] = key.split(',').map(v => Math.min(255, parseInt(v) * 32 + 16));
           return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
         });
 
@@ -76,7 +76,7 @@ export async function analyzeLogo(imageDataUrl: string): Promise<LogoAnalysis> {
       }
 
       // Calculate aspect ratio
-      const aspectRatio = img.width / img.height;
+      const aspectRatio = img.height > 0 ? img.width / img.height : 1;
 
       // Generate recommendations
       const recommendations: string[] = [];
@@ -109,9 +109,9 @@ export async function analyzeLogo(imageDataUrl: string): Promise<LogoAnalysis> {
       if (sortedColors.length > 0) {
         const isDark = sortedColors.some(color => {
           const hex = color.replace('#', '');
-          const r = parseInt(hex.substr(0, 2), 16);
-          const g = parseInt(hex.substr(2, 2), 16);
-          const b = parseInt(hex.substr(4, 2), 16);
+          const r = parseInt(hex.slice(0, 2), 16);
+          const g = parseInt(hex.slice(2, 4), 16);
+          const b = parseInt(hex.slice(4, 6), 16);
           const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
           return luminance < 0.5;
         });
@@ -493,7 +493,7 @@ export function isLogoSettingSafe(
   };
 
   // Adjust tolerance based on complexity
-  const complexityPenalty = complexity === 'complex' ? 5 : complexity === 'moderate' ? 2 : 0;
+  const complexityPenalty = complexity === 'complex' ? 7 : complexity === 'moderate' ? 2 : 0;
   const logoCoverage = (logoSizePercent * logoSizePercent) / 100;
   const margin = ecCapacity[errorCorrectionLevel] - logoCoverage - complexityPenalty;
 

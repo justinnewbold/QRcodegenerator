@@ -21,6 +21,14 @@ export const metadata: Metadata = {
     description: "Create beautiful, customizable QR codes for free",
     type: "website",
     url: "https://newbold.cloud",
+    images: [
+      {
+        url: "https://newbold.cloud/icons/icon-512x512.png",
+        width: 512,
+        height: 512,
+        alt: "QR Code Generator",
+      },
+    ],
   },
 };
 
@@ -32,6 +40,7 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   maximumScale: 5,
+  viewportFit: "cover",
 };
 
 export default function RootLayout({

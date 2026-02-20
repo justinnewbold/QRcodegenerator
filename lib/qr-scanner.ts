@@ -193,7 +193,10 @@ export function parseWiFiQR(data: string): { ssid: string; password: string; enc
   const result: any = {}
 
   parts.forEach(part => {
-    const [key, value] = part.split(':')
+    const colonIndex = part.indexOf(':')
+    if (colonIndex === -1) return
+    const key = part.substring(0, colonIndex)
+    const value = part.substring(colonIndex + 1)
     if (key && value) {
       result[key] = value
     }

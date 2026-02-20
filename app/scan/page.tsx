@@ -1,8 +1,21 @@
 import QRScanner from "@/components/qr-scanner"
 import { ThemeToggle } from "@/components/theme-toggle"
+import { ErrorBoundary } from "@/components/error-boundary"
 import Link from "next/link"
 import { Home, Package, Grid3x3 } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import type { Metadata } from "next"
+
+export const metadata: Metadata = {
+  title: "QR Code Scanner - Free Online Scanner | newbold.cloud",
+  description: "Scan and decode QR codes instantly with our free online QR code scanner. Use your camera or upload an image to read any QR code.",
+  openGraph: {
+    title: "QR Code Scanner - Free Online Scanner",
+    description: "Scan and decode QR codes instantly with your camera or an image",
+    type: "website",
+    url: "https://newbold.cloud/scan",
+  },
+}
 
 export default function ScanPage() {
   return (
@@ -26,7 +39,9 @@ export default function ScanPage() {
         <ThemeToggle />
       </div>
       <div className="py-8">
-        <QRScanner />
+        <ErrorBoundary>
+          <QRScanner />
+        </ErrorBoundary>
       </div>
     </main>
   )

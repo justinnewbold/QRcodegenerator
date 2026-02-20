@@ -36,7 +36,7 @@ export function findQRsByUrl(pattern: string, exact: boolean = false): URLMatch[
   if (typeof window === 'undefined') return [];
 
   try {
-    const history = JSON.parse(localStorage.getItem('qr-history') || '[]');
+    const history = JSON.parse(localStorage.getItem('qr-generator-history') || '[]');
     const matches: URLMatch[] = [];
 
     history.forEach((item: {
@@ -99,7 +99,7 @@ export function getAllUrls(): { url: string; count: number; qrIds: string[] }[] 
   if (typeof window === 'undefined') return [];
 
   try {
-    const history = JSON.parse(localStorage.getItem('qr-history') || '[]');
+    const history = JSON.parse(localStorage.getItem('qr-generator-history') || '[]');
     const urlMap = new Map<string, { count: number; qrIds: string[] }>();
 
     history.forEach((item: {
@@ -184,7 +184,7 @@ export function applyUrlReplacement(
   }
 
   try {
-    const history = JSON.parse(localStorage.getItem('qr-history') || '[]');
+    const history = JSON.parse(localStorage.getItem('qr-generator-history') || '[]');
     const updates: BulkUpdateResult['updates'] = [];
     let totalUpdated = 0;
     let totalFailed = 0;
@@ -241,7 +241,7 @@ export function applyUrlReplacement(
     });
 
     // Save updated history
-    localStorage.setItem('qr-history', JSON.stringify(updatedHistory));
+    localStorage.setItem('qr-generator-history', JSON.stringify(updatedHistory));
 
     // Dispatch event to notify other components
     window.dispatchEvent(new CustomEvent('qr-history-updated'));
@@ -275,7 +275,7 @@ export function replaceDomain(
   }
 
   try {
-    const history = JSON.parse(localStorage.getItem('qr-history') || '[]');
+    const history = JSON.parse(localStorage.getItem('qr-generator-history') || '[]');
     const updates: BulkUpdateResult['updates'] = [];
     let totalUpdated = 0;
     let totalFailed = 0;
@@ -294,20 +294,22 @@ export function replaceDomain(
         let updated = false;
 
         // Replace in content
+        domainRegex.lastIndex = 0;
         if (domainRegex.test(item.content)) {
+          domainRegex.lastIndex = 0;
           item.content = item.content.replace(domainRegex, `$1${normalizedNew}$3`);
           updated = true;
-          domainRegex.lastIndex = 0; // Reset regex
         }
 
         // Replace in data fields
         if (item.data) {
           Object.keys(item.data).forEach(field => {
             const value = item.data![field];
+            domainRegex.lastIndex = 0;
             if (typeof value === 'string' && domainRegex.test(value)) {
+              domainRegex.lastIndex = 0;
               item.data![field] = value.replace(domainRegex, `$1${normalizedNew}$3`);
               updated = true;
-              domainRegex.lastIndex = 0;
             }
           });
         }
@@ -329,7 +331,7 @@ export function replaceDomain(
       }
     });
 
-    localStorage.setItem('qr-history', JSON.stringify(updatedHistory));
+    localStorage.setItem('qr-generator-history', JSON.stringify(updatedHistory));
     window.dispatchEvent(new CustomEvent('qr-history-updated'));
 
     return { totalUpdated, totalFailed, updates };

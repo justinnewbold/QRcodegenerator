@@ -6,19 +6,23 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { generateQRCode, type QRCodeOptions, type ErrorCorrectionLevel } from "@/lib/qr-generator"
-import { Download, Upload, FileSpreadsheet, Trash2, Package } from "lucide-react"
+import { Download, Upload, FileSpreadsheet, Trash2, Package, AlertCircle } from "lucide-react"
+import { ConfirmDialog } from "@/components/confirm-dialog"
+import { BATCH_DOWNLOAD_STAGGER_MS } from "@/lib/constants"
 
 interface BatchItem {
   id: string;
   content: string;
   label?: string;
   preview?: string;
+  error?: string;
 }
 
 export default function BatchGenerator() {
   const [batchItems, setBatchItems] = useState<BatchItem[]>([])
   const [isGenerating, setIsGenerating] = useState(false)
   const [progress, setProgress] = useState(0)
+  const [showClearConfirm, setShowClearConfirm] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Default QR options for batch
@@ -86,7 +90,10 @@ export default function BatchGenerator() {
         })
       } catch (error) {
         console.error(`Error generating QR for item ${i}:`, error)
-        updatedItems.push(item)
+        updatedItems.push({
+          ...item,
+          error: error instanceof Error ? error.message : 'Generation failed',
+        })
       }
 
       setProgress(Math.round(((i + 1) / batchItems.length) * 100))
@@ -96,15 +103,19 @@ export default function BatchGenerator() {
     setIsGenerating(false)
   }
 
-  const downloadAll = () => {
-    batchItems.forEach((item, index) => {
+  const downloadAll = async () => {
+    for (let i = 0; i < batchItems.length; i++) {
+      const item = batchItems[i]
       if (item.preview) {
         const link = document.createElement("a")
         link.href = item.preview
-        link.download = `qr-${item.label || index + 1}.png`
+        link.download = `qr-${item.label || i + 1}.png`
         link.click()
+        if (i < batchItems.length - 1) {
+          await new Promise(resolve => setTimeout(resolve, BATCH_DOWNLOAD_STAGGER_MS))
+        }
       }
-    })
+    }
   }
 
   const downloadCSVTemplate = () => {
@@ -119,8 +130,13 @@ export default function BatchGenerator() {
   }
 
   const clearBatch = () => {
+    setShowClearConfirm(true)
+  }
+
+  const confirmClear = () => {
     setBatchItems([])
     setProgress(0)
+    setShowClearConfirm(false)
   }
 
   return (
@@ -232,6 +248,11 @@ export default function BatchGenerator() {
                         alt={item.label || 'QR Code'}
                         className="w-full h-auto rounded"
                       />
+                    ) : item.error ? (
+                      <div className="aspect-square bg-destructive/10 rounded flex flex-col items-center justify-center gap-2 p-2">
+                        <AlertCircle className="h-8 w-8 text-destructive opacity-60" />
+                        <p className="text-xs text-destructive text-center">{item.error}</p>
+                      </div>
                     ) : (
                       <div className="aspect-square bg-muted rounded flex items-center justify-center">
                         <Package className="h-8 w-8 opacity-20" />
@@ -250,6 +271,15 @@ export default function BatchGenerator() {
           </CardContent>
         </Card>
       </div>
+      <ConfirmDialog
+        open={showClearConfirm}
+        title="Clear all items?"
+        description={`This will remove all ${batchItems.length} items and their generated QR codes.`}
+        confirmLabel="Clear All"
+        variant="destructive"
+        onConfirm={confirmClear}
+        onCancel={() => setShowClearConfirm(false)}
+      />
     </div>
   )
 }

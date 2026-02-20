@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useMemo } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Input } from "@/components/ui/input"
@@ -41,6 +41,8 @@ import { saveTemplate, getTemplates, deleteTemplate, type QRTemplate } from "@/l
 import { validateQRCode, getQualityRating, type QRValidationResult } from "@/lib/qr-validator"
 import { generateStyledSVG, optimizeSVG, svgToDataURL } from "@/lib/svg-generator"
 import { useKeyboardShortcuts, getShortcutDisplay, type KeyboardShortcut } from "@/hooks/use-keyboard-shortcuts"
+import { sanitizeSvg, safeClipboardWrite, PRINT_DELAY_MS } from "@/lib/constants"
+import { ConfirmDialog } from "@/components/confirm-dialog"
 import DragDropUpload from "@/components/drag-drop-upload"
 import PresetExport from "@/components/preset-export"
 import EnhancedHistory from "@/components/enhanced-history"
@@ -178,6 +180,9 @@ export default function QRCodeGenerator() {
   // Keyboard shortcuts
   const [showShortcuts, setShowShortcuts] = useState<boolean>(false)
 
+  // Confirm dialogs
+  const [confirmAction, setConfirmAction] = useState<{ title: string; description: string; action: () => void } | null>(null)
+
   // Advanced styling
   const [finderPattern, setFinderPattern] = useState<FinderPattern>("square")
   const [frameStyle, setFrameStyle] = useState<FrameStyle>("none")
@@ -229,7 +234,7 @@ export default function QRCodeGenerator() {
   }, [])
 
   // Keyboard shortcuts
-  const shortcuts: KeyboardShortcut[] = [
+  const shortcuts = useMemo<KeyboardShortcut[]>(() => [
     {
       key: 'g',
       ctrlOrCmd: true,
@@ -274,7 +279,8 @@ export default function QRCodeGenerator() {
       description: 'Show Shortcuts Help',
       action: () => setShowShortcuts(true)
     }
-  ]
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  ], [content, qrDataUrl, showShortcuts])
 
   useKeyboardShortcuts(shortcuts)
 
@@ -335,7 +341,7 @@ export default function QRCodeGenerator() {
         if (petName) {
           try {
             // Build petData object with only non-empty fields to minimize QR complexity
-            const petData: any = {
+            const petData: Record<string, unknown> = {
               name: petName,
             }
 
@@ -534,9 +540,9 @@ export default function QRCodeGenerator() {
 
       // Refresh history
       setHistory(getHistory())
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error generating QR code:", error)
-      if (error?.message?.includes('too big')) {
+      if (error instanceof Error && error.message.includes('too big')) {
         setSizeWarning("QR code data is too large. Try reducing the amount of information.")
       }
     }
@@ -716,10 +722,14 @@ export default function QRCodeGenerator() {
   }
 
   const handleDeleteTemplate = (id: string) => {
-    if (confirm('Delete this template?')) {
-      deleteTemplate(id)
-      setTemplates(getTemplates())
-    }
+    setConfirmAction({
+      title: 'Delete template?',
+      description: 'This template will be permanently removed.',
+      action: () => {
+        deleteTemplate(id)
+        setTemplates(getTemplates())
+      },
+    })
   }
 
   const loadFromHistory = (item: QRHistoryItem) => {
@@ -746,52 +756,53 @@ export default function QRCodeGenerator() {
   }
 
   const handleClearHistory = () => {
-    if (confirm('Are you sure you want to clear all history?')) {
-      clearHistory()
-      setHistory([])
-    }
+    setConfirmAction({
+      title: 'Clear all history?',
+      description: 'This will permanently delete all your QR code history. This cannot be undone.',
+      action: () => {
+        clearHistory()
+        setHistory([])
+      },
+    })
   }
 
   const openPrintView = () => {
     if (qrDataUrl) {
       const printWindow = window.open('', '_blank')
       if (printWindow) {
-        printWindow.document.write(`
-          <html>
-            <head>
-              <title>Print QR Code</title>
-              <style>
-                body {
-                  margin: 0;
-                  display: flex;
-                  justify-content: center;
-                  align-items: center;
-                  min-height: 100vh;
-                  background: white;
-                }
-                img {
-                  max-width: 90%;
-                  height: auto;
-                }
-                @media print {
-                  body {
-                    margin: 0;
-                  }
-                  img {
-                    max-width: 100%;
-                    page-break-after: avoid;
-                  }
-                }
-              </style>
-            </head>
-            <body>
-              <img src="${qrDataUrl}" alt="QR Code" />
-            </body>
-          </html>
-        `)
-        printWindow.document.close()
+        const doc = printWindow.document
+        doc.open()
+
+        const style = doc.createElement('style')
+        style.textContent = `
+          body {
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: white;
+          }
+          img {
+            max-width: 90%;
+            height: auto;
+          }
+          @media print {
+            body { margin: 0; }
+            img { max-width: 100%; page-break-after: avoid; }
+          }
+        `
+        doc.head.appendChild(style)
+        doc.title = 'Print QR Code'
+
+        const img = doc.createElement('img')
+        img.src = qrDataUrl
+        img.alt = 'QR Code'
+        doc.body.appendChild(img)
+
+        doc.close()
         printWindow.focus()
-        setTimeout(() => printWindow.print(), 250)
+        setTimeout(() => printWindow.print(), PRINT_DELAY_MS)
       }
     }
   }
@@ -2450,7 +2461,7 @@ export default function QRCodeGenerator() {
                       {/* QR Code Display */}
                       <div className="p-8 bg-white rounded-lg shadow-lg flex items-center justify-center">
                         {showSvgPreview && qrSvg ? (
-                          <div dangerouslySetInnerHTML={{ __html: qrSvg }} className="max-w-full" />
+                          <div dangerouslySetInnerHTML={{ __html: sanitizeSvg(qrSvg) }} className="max-w-full" />
                         ) : (
                           <img src={qrDataUrl} alt="QR Code" className="max-w-full" />
                         )}
@@ -3029,6 +3040,18 @@ export default function QRCodeGenerator() {
           </Card>
         </div>
       )}
+      <ConfirmDialog
+        open={confirmAction !== null}
+        title={confirmAction?.title ?? ''}
+        description={confirmAction?.description ?? ''}
+        confirmLabel="Delete"
+        variant="destructive"
+        onConfirm={() => {
+          confirmAction?.action()
+          setConfirmAction(null)
+        }}
+        onCancel={() => setConfirmAction(null)}
+      />
     </div>
   )
 }

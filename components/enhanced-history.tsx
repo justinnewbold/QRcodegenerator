@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -65,17 +65,7 @@ export default function EnhancedHistory({ onClose, onRestore }: EnhancedHistoryP
     loadHistory()
   }, [])
 
-  useEffect(() => {
-    applyFiltersAndSort()
-  }, [searchQuery, selectedType, showFavoritesOnly, sortBy, sortOrder, selectedTagFilter, history])
-
-  const loadHistory = () => {
-    const data = getHistory()
-    setHistory(data)
-    setAllTags(getAllTags())
-  }
-
-  const applyFiltersAndSort = () => {
+  const applyFiltersAndSort = useCallback(() => {
     let result = history
 
     // Search
@@ -102,6 +92,16 @@ export default function EnhancedHistory({ onClose, onRestore }: EnhancedHistoryP
     result = sortHistory(result, sortBy, sortOrder)
 
     setFilteredHistory(result)
+  }, [history, searchQuery, selectedType, showFavoritesOnly, sortBy, sortOrder, selectedTagFilter])
+
+  useEffect(() => {
+    applyFiltersAndSort()
+  }, [applyFiltersAndSort])
+
+  const loadHistory = () => {
+    const data = getHistory()
+    setHistory(data)
+    setAllTags(getAllTags())
   }
 
   const handleToggleFavorite = (id: string) => {

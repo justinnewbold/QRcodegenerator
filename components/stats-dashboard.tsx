@@ -44,8 +44,8 @@ function getStats(): StatsData {
 
   try {
     // Aggregate from various localStorage keys
-    const history = JSON.parse(localStorage.getItem('qr-history') || '[]');
-    const analytics = JSON.parse(localStorage.getItem('qr-analytics') || '{}');
+    const history = JSON.parse(localStorage.getItem('qr-generator-history') || '[]');
+    const analytics = JSON.parse(localStorage.getItem('qr-analytics-events') || '[]');
 
     const byType: Record<string, number> = {};
     const byDay: Record<string, number> = {};
@@ -53,12 +53,12 @@ function getStats(): StatsData {
     const recentActivity: ActivityEntry[] = [];
 
     // Process history
-    history.forEach((item: { type: string; createdAt: string; id: string }) => {
+    history.forEach((item: { type: string; timestamp: number; id: string }) => {
       // Count by type
       byType[item.type] = (byType[item.type] || 0) + 1;
 
       // Count by day
-      const date = new Date(item.createdAt);
+      const date = new Date(item.timestamp);
       const dayKey = date.toISOString().split('T')[0];
       byDay[dayKey] = (byDay[dayKey] || 0) + 1;
 
@@ -77,10 +77,14 @@ function getStats(): StatsData {
       }
     });
 
-    // Calculate derived stats
+    // Calculate derived stats from analytics events array
     const totalGenerated = history.length;
-    const totalDownloaded = analytics.downloads || Math.floor(totalGenerated * 0.7);
-    const totalViewed = analytics.views || totalGenerated;
+    const totalDownloaded = Array.isArray(analytics)
+      ? analytics.filter((e: { eventType: string }) => e.eventType === 'downloaded').length
+      : 0;
+    const totalViewed = Array.isArray(analytics)
+      ? analytics.filter((e: { eventType: string }) => e.eventType === 'viewed').length
+      : 0;
 
     const days = Object.keys(byDay).length || 1;
     const averagePerDay = totalGenerated / days;

@@ -28,6 +28,7 @@ import {
   Download,
   ChevronRight,
 } from 'lucide-react';
+import { safeClipboardWrite, COPY_FEEDBACK_DURATION_MS } from '@/lib/constants';
 
 interface SocialExportProps {
   isOpen: boolean;
@@ -107,9 +108,12 @@ export function SocialExport({
     if (!qrDataUrl) return;
 
     const html = generateEmailSignatureHTML(qrDataUrl, emailConfig);
-    navigator.clipboard.writeText(html);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    safeClipboardWrite(html).then(success => {
+      if (success) {
+        setCopied(true);
+        setTimeout(() => setCopied(false), COPY_FEEDBACK_DURATION_MS);
+      }
+    });
   };
 
   if (!isOpen) return null;

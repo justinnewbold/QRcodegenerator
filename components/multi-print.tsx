@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label"
 import { Select } from "@/components/ui/select"
 import { Slider } from "@/components/ui/slider"
 import { Printer, Grid3x3 } from "lucide-react"
+import { PRINT_DELAY_MS } from "@/lib/constants"
 
 interface PrintLayout {
   columns: number;
@@ -73,111 +74,81 @@ export default function MultiPrint() {
     const cellWidth = (availableWidth - (layout.columns - 1) * layout.spacing / 3.78) / layout.columns
     const cellHeight = (availableHeight - (layout.rows - 1) * layout.spacing / 3.78) / layout.rows
 
-    let gridHTML = ''
     const totalCells = layout.columns * layout.rows
     const totalPages = Math.ceil(items.length / totalCells)
 
+    const doc = printWindow.document
+    doc.open()
+
+    const style = doc.createElement('style')
+    style.textContent = `
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      body { font-family: Arial, sans-serif; }
+      @media print {
+        .print-page:last-child { page-break-after: auto; }
+        @page { size: A4; margin: 0; }
+      }
+      @media screen {
+        body { background: #f0f0f0; padding: 20px; }
+        .print-page { background: white; box-shadow: 0 0 10px rgba(0,0,0,0.1); margin-bottom: 20px; }
+      }
+    `
+    doc.head.appendChild(style)
+    doc.title = 'Print QR Codes'
+
+    // Build grid using DOM APIs to prevent HTML injection
     for (let page = 0; page < totalPages; page++) {
       const pageItems = items.slice(page * totalCells, (page + 1) * totalCells)
 
-      gridHTML += `
-        <div class="print-page" style="page-break-after: always;">
-          <div style="
-            display: grid;
-            grid-template-columns: repeat(${layout.columns}, 1fr);
-            grid-template-rows: repeat(${layout.rows}, 1fr);
-            gap: ${layout.spacing / 3.78}mm;
-            width: ${availableWidth}mm;
-            height: ${availableHeight}mm;
-            margin: ${margin}mm;
-          ">
+      const pageDiv = doc.createElement('div')
+      pageDiv.className = 'print-page'
+      pageDiv.style.pageBreakAfter = 'always'
+
+      const gridDiv = doc.createElement('div')
+      gridDiv.style.cssText = `
+        display: grid;
+        grid-template-columns: repeat(${layout.columns}, 1fr);
+        grid-template-rows: repeat(${layout.rows}, 1fr);
+        gap: ${layout.spacing / 3.78}mm;
+        width: ${availableWidth}mm;
+        height: ${availableHeight}mm;
+        margin: ${margin}mm;
       `
 
       pageItems.forEach((item) => {
-        gridHTML += `
-          <div style="
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            border: 1px dashed #ccc;
-            padding: 5mm;
-          ">
-            <img src="${item.qrDataUrl}" style="
-              width: 100%;
-              height: auto;
-              max-width: ${cellWidth - 10}mm;
-              max-height: ${cellHeight - (layout.showLabels ? 20 : 10)}mm;
-            " />
-            ${layout.showLabels ? `<p style="
-              margin-top: 2mm;
-              font-size: 10pt;
-              text-align: center;
-              word-break: break-word;
-            ">${item.label}</p>` : ''}
-          </div>
-        `
+        const cell = doc.createElement('div')
+        cell.style.cssText = 'display:flex;flex-direction:column;align-items:center;justify-content:center;border:1px dashed #ccc;padding:5mm;'
+
+        const img = doc.createElement('img')
+        img.src = item.qrDataUrl
+        img.style.cssText = `width:100%;height:auto;max-width:${cellWidth - 10}mm;max-height:${cellHeight - (layout.showLabels ? 20 : 10)}mm;`
+        cell.appendChild(img)
+
+        if (layout.showLabels) {
+          const label = doc.createElement('p')
+          label.textContent = item.label // textContent prevents HTML injection
+          label.style.cssText = 'margin-top:2mm;font-size:10pt;text-align:center;word-break:break-word;'
+          cell.appendChild(label)
+        }
+
+        gridDiv.appendChild(cell)
       })
 
       // Fill empty cells
       const emptyCells = totalCells - pageItems.length
       for (let i = 0; i < emptyCells; i++) {
-        gridHTML += `
-          <div style="
-            border: 1px dashed #eee;
-          "></div>
-        `
+        const emptyCell = doc.createElement('div')
+        emptyCell.style.border = '1px dashed #eee'
+        gridDiv.appendChild(emptyCell)
       }
 
-      gridHTML += `
-          </div>
-        </div>
-      `
+      pageDiv.appendChild(gridDiv)
+      doc.body.appendChild(pageDiv)
     }
 
-    printWindow.document.write(`
-      <html>
-        <head>
-          <title>Print QR Codes</title>
-          <style>
-            * {
-              margin: 0;
-              padding: 0;
-              box-sizing: border-box;
-            }
-            body {
-              font-family: Arial, sans-serif;
-            }
-            @media print {
-              .print-page:last-child {
-                page-break-after: auto;
-              }
-              @page {
-                size: A4;
-                margin: 0;
-              }
-            }
-            @media screen {
-              body {
-                background: #f0f0f0;
-                padding: 20px;
-              }
-              .print-page {
-                background: white;
-                box-shadow: 0 0 10px rgba(0,0,0,0.1);
-                margin-bottom: 20px;
-              }
-            }
-          </style>
-        </head>
-        <body>
-          ${gridHTML}
-        </body>
-      </html>
-    `)
-    printWindow.document.close()
+    doc.close()
     printWindow.focus()
-    setTimeout(() => printWindow.print(), 250)
+    setTimeout(() => printWindow.print(), PRINT_DELAY_MS)
   }
 
   return (

@@ -161,7 +161,8 @@ export function KeyboardShortcutsButton() {
       if (
         e.target instanceof HTMLInputElement ||
         e.target instanceof HTMLTextAreaElement ||
-        e.target instanceof HTMLSelectElement
+        e.target instanceof HTMLSelectElement ||
+        (e.target instanceof HTMLElement && e.target.isContentEditable)
       ) {
         return;
       }
@@ -196,14 +197,15 @@ export function KeyboardShortcutsButton() {
 export function GlobalKeyboardShortcuts() {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+      const isMac = /Mac|iPhone|iPad|iPod/.test(navigator.userAgent);
       const modifier = isMac ? e.metaKey : e.ctrlKey;
 
       // Skip if in input field for most shortcuts
       const isInputField =
         e.target instanceof HTMLInputElement ||
         e.target instanceof HTMLTextAreaElement ||
-        e.target instanceof HTMLSelectElement;
+        e.target instanceof HTMLSelectElement ||
+        (e.target instanceof HTMLElement && e.target.isContentEditable);
 
       // Ctrl/⌘ + J - Toggle theme
       if (modifier && e.key === 'j' && !e.shiftKey) {

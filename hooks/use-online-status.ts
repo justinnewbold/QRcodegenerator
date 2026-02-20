@@ -6,10 +6,13 @@ import { useState, useEffect } from 'react';
  * React hook for tracking online/offline status
  */
 export function useOnlineStatus(): boolean {
-  const [online, setOnline] = useState(true);
+  const [online, setOnline] = useState(() => {
+    if (typeof navigator === 'undefined') return true;
+    return navigator.onLine;
+  });
 
   useEffect(() => {
-    // Set initial state
+    // Sync with actual browser state
     setOnline(navigator.onLine);
 
     const handleOnline = () => setOnline(true);

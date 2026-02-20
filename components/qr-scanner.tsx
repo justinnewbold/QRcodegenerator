@@ -5,13 +5,15 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Upload, Camera, X } from "lucide-react"
+import { Upload, Camera, X, Check } from "lucide-react"
 import jsQR from "jsqr"
+import { isSafeUrl, safeClipboardWrite, COPY_FEEDBACK_DURATION_MS } from "@/lib/constants"
 
 export default function QRScanner() {
   const [scannedData, setScannedData] = useState<string>("")
   const [error, setError] = useState<string>("")
   const [isScanning, setIsScanning] = useState(false)
+  const [copyFeedback, setCopyFeedback] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const videoRef = useRef<HTMLVideoElement>(null)
   const streamRef = useRef<MediaStream | null>(null)
@@ -57,7 +59,7 @@ export default function QRScanner() {
 
       reader.readAsDataURL(file)
     } catch (err) {
-      setError("Error reading file")
+      setError(err instanceof Error ? err.message : "Error reading file")
       console.error(err)
     }
   }
@@ -115,12 +117,16 @@ export default function QRScanner() {
     requestAnimationFrame(scanFromCamera)
   }
 
-  const copyToClipboard = () => {
-    navigator.clipboard.writeText(scannedData)
+  const copyToClipboard = async () => {
+    const success = await safeClipboardWrite(scannedData)
+    if (success) {
+      setCopyFeedback(true)
+      setTimeout(() => setCopyFeedback(false), COPY_FEEDBACK_DURATION_MS)
+    }
   }
 
   const openLink = () => {
-    if (scannedData.startsWith("http://") || scannedData.startsWith("https://")) {
+    if (isSafeUrl(scannedData)) {
       window.open(scannedData, "_blank", "noopener,noreferrer")
     }
   }
@@ -170,12 +176,14 @@ export default function QRScanner() {
                     autoPlay
                     playsInline
                     className="w-full"
+                    aria-label="Camera feed for QR code scanning"
                   />
                   <Button
                     onClick={stopCamera}
                     variant="destructive"
                     size="icon"
                     className="absolute top-4 right-4"
+                    aria-label="Stop camera"
                   >
                     <X className="h-4 w-4" />
                   </Button>
@@ -187,7 +195,7 @@ export default function QRScanner() {
             )}
 
             {error && (
-              <div className="p-4 rounded-lg bg-destructive/10 text-destructive text-sm">
+              <div className="p-4 rounded-lg bg-destructive/10 text-destructive text-sm" role="alert">
                 {error}
               </div>
             )}
@@ -202,11 +210,10 @@ export default function QRScanner() {
                     {scannedData}
                   </div>
                   <div className="flex gap-2">
-                    <Button onClick={copyToClipboard} variant="outline" className="flex-1">
-                      Copy
+                    <Button onClick={copyToClipboard} variant="outline" className="flex-1 gap-2">
+                      {copyFeedback ? <><Check className="h-4 w-4" /> Copied</> : "Copy"}
                     </Button>
-                    {(scannedData.startsWith("http://") ||
-                      scannedData.startsWith("https://")) && (
+                    {isSafeUrl(scannedData) && (
                       <Button onClick={openLink} className="flex-1">
                         Open Link
                       </Button>

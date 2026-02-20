@@ -446,6 +446,20 @@ export function parseThemeFromUrl(): CustomTheme | null {
     while (padded.length % 4) padded += '=';
 
     const data = JSON.parse(atob(padded));
+
+    // Validate required fields
+    if (!data.n || typeof data.n !== 'string') return null;
+    if (!data.c || typeof data.c !== 'object') return null;
+
+    // Validate color values are valid hex strings
+    const requiredColors = ['background', 'foreground', 'primary', 'card', 'border'];
+    const hexPattern = /^#[0-9a-fA-F]{3,8}$/;
+    for (const key of requiredColors) {
+      if (typeof data.c[key] !== 'string' || !hexPattern.test(data.c[key])) {
+        return null;
+      }
+    }
+
     return {
       id: 'shared-theme',
       name: data.n,

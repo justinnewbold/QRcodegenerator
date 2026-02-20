@@ -1,5 +1,6 @@
 import QRCode from 'qrcode';
 import jsPDF from 'jspdf';
+import { loadImageWithTimeout, DEFAULT_LOGO_SIZE_RATIO } from './constants';
 
 export type ErrorCorrectionLevel = 'L' | 'M' | 'Q' | 'H';
 export type QRStyle = 'squares' | 'dots' | 'rounded' | 'extra-rounded' | 'classy';
@@ -54,7 +55,7 @@ export async function generateQRCode(options: QRCodeOptions): Promise<QRCodeResu
     backgroundColor,
     margin,
     logoUrl,
-    logoSize = 0.2,
+    logoSize = DEFAULT_LOGO_SIZE_RATIO,
     style = 'squares',
     gradient,
     finderPattern = 'square',
@@ -99,12 +100,7 @@ export async function generateQRCode(options: QRCodeOptions): Promise<QRCodeResu
   canvas.height = totalHeight;
 
   // Load base QR code
-  const qrImage = new Image();
-  await new Promise((resolve, reject) => {
-    qrImage.onload = resolve;
-    qrImage.onerror = reject;
-    qrImage.src = dataUrl;
-  });
+  const qrImage = await loadImageWithTimeout(dataUrl);
 
   // Get QR code data for custom styling
   const tempCanvas = document.createElement('canvas');
@@ -120,13 +116,7 @@ export async function generateQRCode(options: QRCodeOptions): Promise<QRCodeResu
   // Clear canvas with background
   if (backgroundImageUrl) {
     // Load and draw background image
-    const bgImage = new Image();
-    bgImage.crossOrigin = 'anonymous';
-    await new Promise((resolve, reject) => {
-      bgImage.onload = resolve;
-      bgImage.onerror = reject;
-      bgImage.src = backgroundImageUrl;
-    });
+    const bgImage = await loadImageWithTimeout(backgroundImageUrl, undefined, 'anonymous');
 
     // Draw background image (cover fit)
     const scale = Math.max(size / bgImage.width, size / bgImage.height);
@@ -136,8 +126,8 @@ export async function generateQRCode(options: QRCodeOptions): Promise<QRCodeResu
     const offsetY = (size - scaledHeight) / 2;
     ctx.drawImage(bgImage, offsetX, offsetY, scaledWidth, scaledHeight);
 
-    // Apply white overlay with opacity
-    ctx.fillStyle = `rgba(255, 255, 255, ${backgroundImageOpacity})`;
+    // Apply white overlay - higher backgroundImageOpacity means image more visible (less overlay)
+    ctx.fillStyle = `rgba(255, 255, 255, ${1 - backgroundImageOpacity})`;
     ctx.fillRect(0, 0, size, size);
   } else if (transparentBackground) {
     ctx.clearRect(0, 0, size, totalHeight);
@@ -333,13 +323,7 @@ export async function generateQRCode(options: QRCodeOptions): Promise<QRCodeResu
 
   // Add logo if provided
   if (logoUrl) {
-    const logo = new Image();
-    logo.crossOrigin = 'anonymous';
-    await new Promise((resolve, reject) => {
-      logo.onload = resolve;
-      logo.onerror = reject;
-      logo.src = logoUrl;
-    });
+    const logo = await loadImageWithTimeout(logoUrl, undefined, 'anonymous');
 
     const logoSizePixels = size * logoSize;
     const logoX = (size - logoSizePixels) / 2;
@@ -417,12 +401,20 @@ export async function generateQRCode(options: QRCodeOptions): Promise<QRCodeResu
   return { dataUrl, svg };
 }
 
+function escapeWiFiField(str: string): string {
+  return str
+    .replace(/\\/g, '\\\\')
+    .replace(/;/g, '\\;')
+    .replace(/:/g, '\\:')
+    .replace(/"/g, '\\"');
+}
+
 export function generateWiFiString(
   ssid: string,
   password: string,
   encryption: 'WPA' | 'WEP' | 'nopass'
 ): string {
-  return `WIFI:T:${encryption};S:${ssid};P:${password};;`;
+  return `WIFI:T:${encryption};S:${escapeWiFiField(ssid)};P:${escapeWiFiField(password)};;`;
 }
 
 export interface VCardData {
@@ -445,23 +437,31 @@ export interface VCardData {
   instagram?: string;
 }
 
+function escapeVCardValue(str: string): string {
+  return str
+    .replace(/\\/g, '\\\\')
+    .replace(/;/g, '\\;')
+    .replace(/,/g, '\\,')
+    .replace(/\n/g, '\\n');
+}
+
 export function generateVCardString(data: VCardData): string {
   const lines = [
     'BEGIN:VCARD',
     'VERSION:3.0',
-    `N:${data.lastName};${data.firstName};;;`,
-    `FN:${data.firstName} ${data.lastName}`,
+    `N:${escapeVCardValue(data.lastName)};${escapeVCardValue(data.firstName)};;;`,
+    `FN:${escapeVCardValue(data.firstName)} ${escapeVCardValue(data.lastName)}`,
   ];
 
-  if (data.organization) lines.push(`ORG:${data.organization}`);
-  if (data.jobTitle) lines.push(`TITLE:${data.jobTitle}`);
+  if (data.organization) lines.push(`ORG:${escapeVCardValue(data.organization)}`);
+  if (data.jobTitle) lines.push(`TITLE:${escapeVCardValue(data.jobTitle)}`);
   if (data.phone) lines.push(`TEL:${data.phone}`);
   if (data.email) lines.push(`EMAIL:${data.email}`);
   if (data.website) lines.push(`URL:${data.website}`);
 
   // Enhanced address formatting
   if (data.address || data.city || data.state || data.zip || data.country) {
-    const addr = `ADR:;;${data.address || ''};${data.city || ''};${data.state || ''};${data.zip || ''};${data.country || ''}`;
+    const addr = `ADR:;;${escapeVCardValue(data.address || '')};${escapeVCardValue(data.city || '')};${escapeVCardValue(data.state || '')};${escapeVCardValue(data.zip || '')};${escapeVCardValue(data.country || '')}`;
     lines.push(addr);
   }
 
@@ -470,12 +470,12 @@ export function generateVCardString(data: VCardData): string {
     lines.push(`BDAY:${data.birthday}`);
   }
 
-  if (data.note) lines.push(`NOTE:${data.note}`);
+  if (data.note) lines.push(`NOTE:${escapeVCardValue(data.note)}`);
 
   // Social media links
-  if (data.twitter) lines.push(`X-SOCIALPROFILE;TYPE=twitter:https://twitter.com/${data.twitter.replace('@', '')}`);
+  if (data.twitter) lines.push(`X-SOCIALPROFILE;TYPE=twitter:https://twitter.com/${data.twitter.replace(/@/g, '')}`);
   if (data.linkedin) lines.push(`X-SOCIALPROFILE;TYPE=linkedin:${data.linkedin.startsWith('http') ? data.linkedin : 'https://linkedin.com/in/' + data.linkedin}`);
-  if (data.instagram) lines.push(`X-SOCIALPROFILE;TYPE=instagram:https://instagram.com/${data.instagram.replace('@', '')}`);
+  if (data.instagram) lines.push(`X-SOCIALPROFILE;TYPE=instagram:https://instagram.com/${data.instagram.replace(/@/g, '')}`);
 
   lines.push('END:VCARD');
   return lines.join('\n');
@@ -507,6 +507,14 @@ export function generatePhoneString(phone: string): string {
   return `tel:${phone}`;
 }
 
+function escapeICalText(str: string): string {
+  return str
+    .replace(/\\/g, '\\\\')
+    .replace(/;/g, '\\;')
+    .replace(/,/g, '\\,')
+    .replace(/\n/g, '\\n');
+}
+
 export function generateCalendarString(data: {
   title: string;
   location?: string;
@@ -523,13 +531,13 @@ export function generateCalendarString(data: {
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
     'BEGIN:VEVENT',
-    `SUMMARY:${data.title}`,
+    `SUMMARY:${escapeICalText(data.title)}`,
     `DTSTART:${formatDate(data.startDate)}`,
     `DTEND:${formatDate(data.endDate)}`,
   ];
 
-  if (data.location) lines.push(`LOCATION:${data.location}`);
-  if (data.description) lines.push(`DESCRIPTION:${data.description}`);
+  if (data.location) lines.push(`LOCATION:${escapeICalText(data.location)}`);
+  if (data.description) lines.push(`DESCRIPTION:${escapeICalText(data.description)}`);
 
   lines.push('END:VEVENT');
   lines.push('END:VCALENDAR');
@@ -567,7 +575,7 @@ export function generateAppStoreString(platform: 'ios' | 'android', appId: strin
 }
 
 export function generateSocialMediaString(platform: string, username: string): string {
-  const cleanUsername = username.replace('@', '');
+  const cleanUsername = username.replace(/@/g, '');
 
   switch (platform) {
     case 'twitter':
@@ -620,17 +628,24 @@ export function generateMeetingString(platform: 'zoom' | 'teams' | 'meet', meeti
 }
 
 export function generatePayPalString(email: string, amount?: string, currency: string = 'USD', note?: string): string {
-  // PayPal.me format
-  const cleanEmail = email.replace('@', '').replace(/\./g, '');
-  let result = `https://paypal.me/${email}`;
+  let result: string;
 
-  // If it's not a paypal.me username, use standard paypal link
   if (email.includes('@')) {
-    result = `https://www.paypal.com/paypalme/${cleanEmail}`;
-  }
-
-  if (amount) {
-    result += `/${amount}${currency}`;
+    // Email address - use PayPal business payment URL
+    const params = new URLSearchParams({
+      cmd: '_xclick',
+      business: email,
+      currency_code: currency,
+    });
+    if (amount) params.set('amount', amount);
+    if (note) params.set('item_name', note);
+    result = `https://www.paypal.com/cgi-bin/webscr?${params.toString()}`;
+  } else {
+    // PayPal.me username
+    result = `https://paypal.me/${email}`;
+    if (amount) {
+      result += `/${amount}${currency}`;
+    }
   }
 
   return result;
@@ -645,9 +660,14 @@ export function generateMediaString(platform: 'spotify' | 'youtube' | 'soundclou
   // Handle short codes/IDs
   switch (platform) {
     case 'spotify':
-      // Spotify URI or ID
+      // Spotify URI or ID (e.g. spotify:track:6rqhFg...)
       if (url.includes('spotify:')) {
-        return url.replace('spotify:', 'https://open.spotify.com/').replace(/:/g, '/');
+        const parts = url.split(':');
+        // parts[0]='spotify', parts[1]='track'/'album'/'playlist', parts[2]=ID
+        if (parts.length >= 3) {
+          return `https://open.spotify.com/${parts[1]}/${parts.slice(2).join(':')}`;
+        }
+        return `https://open.spotify.com/${parts.slice(1).join('/')}`;
       }
       return `https://open.spotify.com/track/${url}`;
     case 'youtube':

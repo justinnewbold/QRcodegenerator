@@ -12,7 +12,17 @@ export interface KeyboardShortcut {
 export function useKeyboardShortcuts(shortcuts: KeyboardShortcut[]) {
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+      // Don't trigger shortcuts when typing in input fields
+      if (
+        event.target instanceof HTMLInputElement ||
+        event.target instanceof HTMLTextAreaElement ||
+        event.target instanceof HTMLSelectElement ||
+        (event.target instanceof HTMLElement && event.target.isContentEditable)
+      ) {
+        return;
+      }
+
+      const isMac = /Mac|iPhone|iPad|iPod/.test(navigator.userAgent);
       const cmdOrCtrl = isMac ? event.metaKey : event.ctrlKey;
 
       for (const shortcut of shortcuts) {
@@ -36,7 +46,9 @@ export function useKeyboardShortcuts(shortcuts: KeyboardShortcut[]) {
 }
 
 export function getShortcutDisplay(shortcut: KeyboardShortcut): string {
-  const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+  const isMac = typeof navigator !== 'undefined'
+    ? /Mac|iPhone|iPad|iPod/.test(navigator.userAgent)
+    : false;
   const parts: string[] = [];
 
   if (shortcut.ctrlOrCmd) {

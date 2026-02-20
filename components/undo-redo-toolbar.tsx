@@ -28,7 +28,7 @@ export function UndoRedoToolbar({
   variant = 'default',
 }: UndoRedoToolbarProps) {
   const isMac = typeof navigator !== 'undefined' &&
-    navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+    /Mac|iPhone|iPad|iPod/.test(navigator.userAgent);
   const modKey = isMac ? '⌘' : 'Ctrl';
 
   if (variant === 'floating') {
@@ -146,7 +146,7 @@ export function UndoRedoToolbar({
 // Keyboard shortcut hint component
 export function UndoRedoHint() {
   const isMac = typeof navigator !== 'undefined' &&
-    navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+    /Mac|iPhone|iPad|iPod/.test(navigator.userAgent);
 
   return (
     <div className="flex items-center gap-4 text-xs text-muted-foreground">

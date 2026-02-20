@@ -231,7 +231,7 @@ export function applyChange(changeId: string): boolean {
 
   try {
     // Get QR history
-    const history = JSON.parse(localStorage.getItem('qr-history') || '[]');
+    const history = JSON.parse(localStorage.getItem('qr-generator-history') || '[]');
     const qrIndex = history.findIndex((qr: { id: string }) => qr.id === change.qrId);
 
     if (qrIndex === -1) {
@@ -249,7 +249,7 @@ export function applyChange(changeId: string): boolean {
     history[qrIndex].updatedAt = new Date().toISOString();
 
     // Save QR history
-    localStorage.setItem('qr-history', JSON.stringify(history));
+    localStorage.setItem('qr-generator-history', JSON.stringify(history));
 
     // Update change status
     changes[index].status = 'applied';

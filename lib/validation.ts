@@ -137,7 +137,7 @@ export const smsSchema = z.object({
 
 export const bitcoinAddressSchema = z.string()
   .regex(
-    /^(1|3|bc1)[a-zA-HJ-NP-Z0-9]{25,62}$/,
+    /^([13][a-km-zA-HJ-NP-Z1-9]{25,34}|bc1[a-z0-9]{39,59})$/,
     'Invalid Bitcoin address'
   );
 
